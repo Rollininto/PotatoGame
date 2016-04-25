@@ -1,11 +1,11 @@
 ﻿  Level.cpp
-d:\projects\potatogame\potatogame\blockbox.h(24): warning C4091: 'static ': ignored on left of '' when no variable is declared
-d:\projects\potatogame\potatogame\blockbox.h(33): warning C4091: 'static ': ignored on left of 'BlockBox::Collection' when no variable is declared
-d:\projects\potatogame\potatogame\dot.h(50): warning C4091: 'static ': ignored on left of 'Dot::States' when no variable is declared
-d:\projects\potatogame\potatogame\level.h(51): warning C4091: 'static ': ignored on left of 'Level::Result' when no variable is declared
-d:\projects\potatogame\potatogame\level.cpp(212): warning C4244: '*=': conversion from 'double' to 'int', possible loss of data
-d:\projects\potatogame\potatogame\level.cpp(213): warning C4244: '*=': conversion from 'double' to 'int', possible loss of data
-d:\projects\potatogame\potatogame\level.cpp(214): warning C4244: '*=': conversion from 'double' to 'int', possible loss of data
-d:\projects\potatogame\potatogame\level.cpp(215): warning C4244: '*=': conversion from 'double' to 'int', possible loss of data
-  PotatoGame.vcxproj -> D:\Projects\PotatoGame\Debug\PotatoGame.exe
-  PotatoGame.vcxproj -> D:\Projects\PotatoGame\Debug\PotatoGame.pdb (Partial PDB)
+d:\projects\github\potatogame\potatogame\blockbox.h(24): warning C4091: 'static ': ignored on left of '' when no variable is declared
+d:\projects\github\potatogame\potatogame\blockbox.h(33): warning C4091: 'static ': ignored on left of 'BlockBox::Collection' when no variable is declared
+d:\projects\github\potatogame\potatogame\dot.h(51): warning C4091: 'static ': ignored on left of 'Dot::States' when no variable is declared
+d:\projects\github\potatogame\potatogame\level.h(53): warning C4091: 'static ': ignored on left of 'Level::Result' when no variable is declared
+d:\projects\github\potatogame\potatogame\level.cpp(211): warning C4244: '*=': conversion from 'double' to 'int', possible loss of data
+d:\projects\github\potatogame\potatogame\level.cpp(212): warning C4244: '*=': conversion from 'double' to 'int', possible loss of data
+d:\projects\github\potatogame\potatogame\level.cpp(213): warning C4244: '*=': conversion from 'double' to 'int', possible loss of data
+d:\projects\github\potatogame\potatogame\level.cpp(214): warning C4244: '*=': conversion from 'double' to 'int', possible loss of data
+  PotatoGame.vcxproj -> D:\Projects\GitHUB\PotatoGame\Debug\PotatoGame.exe
+  PotatoGame.vcxproj -> D:\Projects\GitHUB\PotatoGame\Debug\PotatoGame.pdb (Partial PDB)

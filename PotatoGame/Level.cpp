@@ -6,7 +6,7 @@ SDL_Rect Level::COIN_CLIPS = { 0,0,4,2};
 SDL_Rect Level::OBST_CLIPS = { 0,0,1,1 };
 SDL_Rect Level::GROUND_CLIPS = {0,0,1,1};
 int Level::T_ANIMATE = 0;
-
+bool Level::PlayAgain = true;
 
 
 Level::Level(SDL_Renderer* gR, int w, int h) : lTextures(BlockBox::BL_TYPENUM)
@@ -149,9 +149,8 @@ bool Level::Load(std::string levelName, std::string PotatoStyle)
 	potato = new Dot(&lBlocks, tmp, gRenderer, Width, Height);
 
 	is_running = true;
-	
 	Level::T_ANIMATE = 0;
-	SDL_TimerID timerID = SDL_AddTimer( 150, CoinAnimate, NULL);
+	SDL_TimerID timerID = SDL_AddTimer( 250, CoinAnimate, NULL);
 	
 
 	return levelLoaded;
@@ -252,22 +251,102 @@ void Level::UpdateCamera()
 	}
 }
 
+void Level::UpdateDot() {
+	potato->move();
+	if (potato->getState() == Dot::States::DOT_DIE)
+		StopTimer();
+}
+
 bool Level::isLost()
 {
-	return  potato->getState() == Dot::States::DOT_DEAD;
+	return  potato->getState() == Dot::States::DOT_DEAD || potato->getState() != Dot::States::DOT_WON;
 }
 
 bool Level::isRunning()
 {
 	int st = potato->getState();
-	if (st == Dot::States::DOT_WON)
+	if (st == Dot::States::DOT_WON || st == Dot::States::DOT_DEAD)
 		is_running = false;
 	return is_running;
 }
 
 void Level::exit()
 {
-	is_running = false;
+	StopTimer();
+	LTexture bgFromLevel;
+	bgFromLevel.createBlank(gRenderer, lCamera.w, lCamera.h, SDL_TEXTUREACCESS_TARGET);
+	bgFromLevel.setAsRenderTarget(gRenderer);
+	Draw();
+	SDL_SetRenderDrawBlendMode(gRenderer, SDL_BlendMode::SDL_BLENDMODE_BLEND);
+	SDL_SetRenderDrawColor(gRenderer,0,0,0,150);
+	SDL_RenderFillRect(gRenderer, new SDL_Rect({ 0,0,lCamera.w,lCamera.h }));
+	LTexture title;
+	title.loadFromRenderedText("Quit current game?", { 55,0,0 }, gRenderer, TTF_OpenFont("Resources/Fonts/Mf_July_Sky.ttf", 50));
+	title.render(gRenderer, new SDL_Rect({ ( lCamera.w - title.getWidth() ) / 2, lCamera.h/4 - title.getHeight(), 0, 0}));
+	SDL_SetRenderTarget(gRenderer, NULL);
+	GMenu QuitMenu(gRenderer,
+		{ "QUIT","CANCEL" },
+		{ 0, lCamera.h / 4, lCamera.w, lCamera.h / 2 },
+		"Resources/Fonts/Mf_July_Sky.ttf",
+		40,
+		{ 55,0,0 },
+		NULL,
+		&bgFromLevel
+		);
+	QuitMenu.Show();
+	switch (QuitMenu.getSelectedOption())
+	{
+	case 0:
+		is_running = false;
+		Level::PlayAgain = false;
+		break;
+	case 1:
+		ResumeTimer();
+		break;
+	default:
+		break;
+	}	
+}
+
+void Level::pause()
+{
+	StopTimer();
+	LTexture bgFromLevel;
+	bgFromLevel.createBlank(gRenderer, lCamera.w, lCamera.h, SDL_TEXTUREACCESS_TARGET);
+	bgFromLevel.setAsRenderTarget(gRenderer);
+	Draw();
+	SDL_SetRenderDrawBlendMode(gRenderer, SDL_BlendMode::SDL_BLENDMODE_BLEND);
+	SDL_SetRenderDrawColor(gRenderer, 0, 0, 0, 150);
+	SDL_RenderFillRect(gRenderer, new SDL_Rect({ 0,0,lCamera.w,lCamera.h }));
+	SDL_SetRenderDrawColor(gRenderer, 25, 125, 25, 255);
+	SDL_RenderFillRect(gRenderer, new SDL_Rect({ 4 * lCamera.w / 5 - 20, 0, lCamera.w / 5 + 20, lCamera.h } ));
+	LTexture title;
+	title.loadFromRenderedText("PAUSE", { 0,0,0 }, gRenderer, TTF_OpenFont("Resources/Fonts/Mf_July_Sky.ttf", 50));
+	title.render(gRenderer, new SDL_Rect({ (9 * lCamera.w / 5 - title.getWidth())/ 2, 10, 0, 0 }));
+	SDL_SetRenderTarget(gRenderer, NULL);
+	GMenu PauseMenu(gRenderer,
+		{ "Resume","Quit" },
+		{ 4*lCamera.w/5, 80, lCamera.w/5, lCamera.h - 80 },
+		"Resources/Fonts/Mf_July_Sky.ttf",
+		40,
+		{ 0,0,0 },
+		NULL,
+		&bgFromLevel
+		);
+	PauseMenu.Show();
+	switch (PauseMenu.getSelectedOption())
+	{
+	case 0:
+		ResumeTimer();
+		break;
+	case 1:
+		is_running = false;
+		//Level::PlayAgain = false;
+		
+		break;
+	default:
+		break;
+	}
 }
 
 Level::Result Level::GetResult()
@@ -283,6 +362,13 @@ Level::Result Level::GetResult()
 void Level::StartTimer()
 {
 	lStartTime = SDL_GetTicks();
+}
+
+
+void Level::ResumeTimer()
+{
+	lStartTime += SDL_GetTicks() - lEndTime;
+	lEndTime = 0;
 }
 
 Uint32 Level::getTimer()

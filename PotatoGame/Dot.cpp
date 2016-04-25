@@ -61,112 +61,118 @@ void Dot::handleEvent(SDL_Event& e)
 
 void Dot::move()
 {
-	//Move the dot right
-	mPosX += (int)mVelX;
-
-	//Check collision with left side of platform - what to do?
-	int sz = lBlocks->size();
-	for (int i = 0; i < sz; i++) {
-		SDL_Rect r = lBlocks->at(i)->getRect();
-		if (check_collision(r))
-		{
-			int type = lBlocks->at(i)->getType();
-			if (type == BlockBox::BL_GROUND)
+	if(State == States::DOT_ALIVE){
+		//Move the dot right
+		mPosX += (int)mVelX;
+	
+		//Check collision with left side of platform - what to do?
+		int sz = lBlocks->size();
+		for (int i = 0; i < sz; i++) {
+			SDL_Rect r = lBlocks->at(i)->getRect();
+			if (check_collision(r))
 			{
-				mPosX -= (int)mVelX;
-				mVelX = 0;
-			}
-			else if (type == BlockBox::BL_OBSTACLE)
-			{
-				State = States::DOT_DEAD;
-				break;
-			}
-		}
-		else
-		{
-			mVelX = DOT_VEL;
-		}
-
-	}
-	if (mPosX < 0)
-	{
-		mPosX -= (int)mVelX;
-		DOT_VEL = -DOT_VEL + 0.2;
-		mVelX = DOT_VEL;
-		tFlip = SDL_FLIP_NONE;
-	}
-	//If the dot went too far to the right
-	if (mPosX + DOT_WIDTH > mapWidth)
-	{
-		//Move back
-		mPosX -= (int)mVelX;
-		DOT_VEL = -DOT_VEL - 0.2;
-		mVelX = DOT_VEL;
-		tFlip = SDL_FLIP_HORIZONTAL;
-	}
-
-	//Move the dot up or down (jump, fall)	
-	bool collides_y = false;
-	mVelY += 0.5*LEVEL_GRAVITY;
-	mPosY += (int)mVelY;
-	int exits = 0;//checking if dot exits level
-	for (int i = 0; i < sz; i++) {
-		BlockBox* b = lBlocks->at(i);
-		SDL_Rect r = b->getRect();
-		if (check_collision(r)) {
-			int type = b->getType();
-			if (type == BlockBox::BL_GROUND)
-			{
-				collides_y = true;
-				mPosY -= (int)mVelY;
-				if (mPosY > r.y)
-					mPosY = r.y + r.h;
-				else
-					mPosY = r.y - DOT_HEIGHT;
-				mVelY = 0;
-				if(r.y>mPosY)
-					_grounded = true;
-				//break;//???
-			}
-			else if (type == BlockBox::BL_OBSTACLE)
-			{
-				_grounded = false;
-				State = States::DOT_DEAD;
-				break;//!!!
-			}
-			else if (type == BlockBox::BL_COLLECTABLE)
-			{
- 				if (!b->is_collected()) {
-					b->collect();
-					mCoins++;
+				int type = lBlocks->at(i)->getType();
+				if (type == BlockBox::BL_GROUND)
+				{
+					mPosX -= (int)mVelX;
+					mVelX = 0;
+				}
+				else if (type == BlockBox::BL_OBSTACLE)
+				{
+					State = States::DOT_DIE;
+					break;
 				}
 			}
-			else if (type == BlockBox::BL_DOOR && BlockBox::DOOR_OPEN == 1)
+			else
 			{
-				exits++;
-				if(exits==4){
-					State = States::DOT_WON;
-					stop();
-				}				
+				mVelX = DOT_VEL;
+			}	
+		}
+		if (mPosX < 0)
+		{
+			mPosX -= (int)mVelX;
+			DOT_VEL = -DOT_VEL + 0.2;
+			mVelX = DOT_VEL;
+			tFlip = SDL_FLIP_NONE;
+		}
+		//If the dot went too far to the right
+		if (mPosX + DOT_WIDTH > mapWidth)
+		{
+			//Move back
+			mPosX -= (int)mVelX;
+			DOT_VEL = -DOT_VEL - 0.2;
+			mVelX = DOT_VEL;
+			tFlip = SDL_FLIP_HORIZONTAL;
+		}
+
+		//Move the dot up or down (jump, fall)	
+		bool collides_y = false;
+		mVelY += 0.5*LEVEL_GRAVITY;
+		mPosY += (int)mVelY;
+		int exits = 0;//checking if dot exits level
+		for (int i = 0; i < sz; i++) {
+			BlockBox* b = lBlocks->at(i);
+			SDL_Rect r = b->getRect();
+			if (check_collision(r)) {
+				int type = b->getType();
+				if (type == BlockBox::BL_GROUND)
+				{
+					collides_y = true;
+					mPosY -= (int)mVelY;
+					if (mPosY > r.y)
+						mPosY = r.y + r.h;
+					else
+						mPosY = r.y - DOT_HEIGHT;
+					mVelY = 0;
+					if (r.y > mPosY)
+						_grounded = true;
+					//break;//???
+				}
+				else if (type == BlockBox::BL_OBSTACLE)
+				{
+					_grounded = false;
+					State = States::DOT_DIE;
+					break;//!!!
+				}
+				else if (type == BlockBox::BL_COLLECTABLE)
+				{
+					if (!b->is_collected()) {
+						b->collect();
+						mCoins++;
+					}
+				}
+				else if (type == BlockBox::BL_DOOR && BlockBox::DOOR_OPEN == 1)
+				{
+					exits++;
+					if (exits == 4) {
+						State = States::DOT_WON;
+						stop();
+					}
+				}
 			}
 		}
-	}
-	//if(_grounded&&!collides_y)
-		//_grounded = false;
+		//if(_grounded&&!collides_y)
+			//_grounded = false;
+	
+		//If the dot went too far up
+		if ((mPosY < 0))
+		{
+			mPosY -= (int)mVelY;
+			mPosY = 0;
+			mVelY = 0;
+		}
 
-	//If the dot went too far up
-	if ((mPosY < 0))
-	{
-		mPosY -= (int)mVelY;
-		mPosY = 0;
-		mVelY = 0;
+		if (State == States::DOT_DIE) {
+			stop();
+			mVelY = -5;
+		}
 	}
-	if ((mPosY > mapHeight + 20)) {
+	else if (State == States::DOT_DIE) {
+		mVelY += 0.5*LEVEL_GRAVITY;
+		mPosY += (int)mVelY;
+	} 
+	if ((mPosY > mapHeight + DOT_HEIGHT)) {
 		State = States::DOT_DEAD;
-	}
-	if (State == States::DOT_DEAD) {
-		stop();
-		mVelY = -5;
 	}
 }
 

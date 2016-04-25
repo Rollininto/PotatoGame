@@ -55,6 +55,12 @@ void BlockBox::render(SDL_Renderer* gR, SDL_Rect cam) {
 					bClip.x = 0;
 			}
 		}
+		/*
+		if (bType == BL_OBSTACLE) {
+			SDL_SetRenderDrawColor(gR, 255, 0, 0, 0);
+			SDL_RenderDrawRect(gR, &dest);
+		}*/
+
 		//SDL_SetRenderDrawColor(gR,255,0,0,0);
 		//SDL_RenderDrawRect(gR, &dest);
 		bTexture->render(gR, &dest,NULL,&bClip);

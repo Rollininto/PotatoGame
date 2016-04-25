@@ -2,6 +2,7 @@
 #include "LTexture.h"
 #include "BlockBox.h"
 #include "Dot.h"
+#include "GMenu.h"
 #include <fstream>
 #include <sstream>
 #include <vector>
@@ -39,6 +40,7 @@ public:
 	void Draw();
 	void DrawBack();
 	void UpdateCamera();
+	void UpdateDot();
 	void handleDotEvent(SDL_Event& e);
 	
 
@@ -56,9 +58,13 @@ public:
 	bool isLost();
 	bool isRunning();	
 	void exit();
+	void pause();
 	Result GetResult();
 	void StartTimer();
+	void ResumeTimer();
 	Uint32 getTimer();
 	void StopTimer();
+
+	static bool PlayAgain;
 };
 

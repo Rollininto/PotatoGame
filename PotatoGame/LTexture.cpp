@@ -8,6 +8,13 @@ LTexture::LTexture()
 	mHeight = 0;
 }
 
+LTexture::LTexture(SDL_Texture* sdlTexture, int w, int h)
+{
+	mTexture = sdlTexture;
+	mWidth = w;
+	mHeight = h;
+}
+
 LTexture::~LTexture()
 {
 	//Deallocate
@@ -107,6 +114,23 @@ bool LTexture::loadFromRenderedText(std::string textureText, SDL_Color textColor
 	//Return success
 	return mTexture != NULL;
 }
+bool LTexture::createBlank(SDL_Renderer* gR,int width, int height, SDL_TextureAccess access)
+{
+	//Create uninitialized texture
+	//mTexture = SDL_CreateTexture(gR, SDL_PIXELFORMAT_RGBA8888, access, width, height);
+	mTexture = SDL_CreateTexture(gR, SDL_PIXELFORMAT_UNKNOWN, access, width, height);
+	if (mTexture == NULL)
+	{
+		printf("Unable to create blank texture! SDL Error: %s\n", SDL_GetError());
+	}
+	else
+	{
+		mWidth = width;
+		mHeight = height;
+	}
+
+	return mTexture != NULL;
+}
 #endif
 
 void LTexture::free()
@@ -156,9 +180,13 @@ void LTexture::render( SDL_Renderer* mRenderer, SDL_Rect* dest, SDL_Rect* clip, 
 		clip = &new_clip;
 	}
 	
-
 	//Render to screen
 	SDL_RenderCopyEx(mRenderer, mTexture, clip, &renderQuad, angle, center, flip);
+}
+
+void LTexture::setAsRenderTarget(SDL_Renderer* gR )
+{
+	SDL_SetRenderTarget(gR, mTexture);
 }
 
 int LTexture::getWidth()

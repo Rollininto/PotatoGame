@@ -15,17 +15,15 @@ const int SCREEN_WIDTH = 1280;
 const int SCREEN_HEIGHT = 720;
 
 enum MainMenu {
-	BEGIN_BORDER,
-	O_START,
-	O_EXIT,
-	END_BORDER
+	O_CAMPAIGN,
+	O_ARCADE,
+	O_SETTINGS,
+	O_EXIT
 };
 
 enum ResMenu {
-	B_BORDER,
 	O_RETRY,
-	O_QUIT,
-	E_BORDER
+	O_QUIT
 };
 //Global variables
 
@@ -35,18 +33,18 @@ SDL_Window* gWindow = NULL;
 	//The window renderer
 SDL_Renderer* gRenderer = NULL;
 
-LTexture gMenuStart;
-LTexture gMenuExit;
+LTexture gMenuBG;
 LTexture gMenuPointer;
 
 bool init();
 bool loadMedia();
-int ShowResultScreen(Level::Result r);
+void RenderResults(Level::Result r);
 void close();
 
 
 int main(int argc, char* args[])
 {
+
 	//Start up SDL and create window
 	if (!init())
 	{
@@ -72,137 +70,110 @@ int main(int argc, char* args[])
 			//SDL_SetWindowFullscreen(gWindow, SDL_WINDOW_FULLSCREEN_DESKTOP);			
 			//Main loop flag
 			bool quit = false;
-			int menuOption = MainMenu::O_START, menuOptionSel = MainMenu::BEGIN_BORDER;
+			int menuOptionSel = -1;
 
 			//Event handler
 			SDL_Event e;
 
 			//While application is running
 			while (!quit)
-			{				
-
-				//Handle events on queue
-				/*while (SDL_PollEvent(&e) != 0)
-				{
-					//User requests quit
-					if (e.type == SDL_QUIT || (e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_ESCAPE))
-					{
-						quit = true;
-					}
-					else if (e.type == SDL_KEYDOWN){
-						SDL_Keycode s = e.key.keysym.sym;
-						switch (s)
-						{
-						case SDLK_DOWN:
-							if(menuOption<MainMenu::END_BORDER - 1)
-								menuOption++;
-							break;
-						case SDLK_UP:
-							if (menuOption>MainMenu::BEGIN_BORDER + 1)
-								menuOption--;
-							break;
-						case SDLK_RETURN:
-							menuOptionSel = menuOption;
-							break;
-						default:
-							break;
-						}						
-					}
-				}
-
+			{	
 				//Clear screen
 				SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
 				SDL_RenderClear(gRenderer);
-				
-				//render main menu
-				TTF_Font* tF = TTF_OpenFont("Resources/Fonts/Mf_July_Sky.ttf", 25);//font could be unavailable
-				if (gMenuStart.loadFromRenderedText("START", { 0x00,0x00,0x00 }, gRenderer, tF)) {
-					SDL_Rect dest = {
-						(SCREEN_WIDTH - gMenuStart.getWidth())/2,
-						SCREEN_HEIGHT- 180 + MainMenu::O_START*30,
-						0,
-						0 
-					};
-					gMenuStart.render(gRenderer, &dest);
-				}
-				if (gMenuExit.loadFromRenderedText("EXIT", { 0x00,0x00,0x00 }, gRenderer, tF)) {
-					SDL_Rect dest = {
-						(SCREEN_WIDTH - gMenuExit.getWidth()) / 2,
-						SCREEN_HEIGHT - 180 + MainMenu::O_EXIT*30,
-						0,
-						0
-					};
-					gMenuExit.render(gRenderer, &dest);
-				}
-				SDL_Rect dest = {
-					(SCREEN_WIDTH) / 2 - 80,
-					SCREEN_HEIGHT - 177 + menuOption * 30,
-					20,
-					20
-				};
-				gMenuPointer.render(gRenderer,&dest);
-				*/
-				if ( menuOptionSel == MainMenu::O_START)
-				{					
-					//create level
-					Level currLevel = Level(gRenderer, SCREEN_WIDTH, SCREEN_HEIGHT);
-
-					//load level 
-					if (!currLevel.Load("level_1", "dot_1")) {
-						printf("Failed to initialize!\n");
-
-					}
-					else
+			
+				GMenu MainMenu(gRenderer,
+					{ "CAMPAIGN","ARCADE","OPTIONS","EXIT" },
+					{0, SCREEN_HEIGHT/2, SCREEN_WIDTH, SCREEN_HEIGHT/2},
+					"Resources/Fonts/Mf_July_Sky.ttf",
+					40,
+					{0,0,0},
+					&gMenuPointer
+				);
+				MainMenu.Show();
+				menuOptionSel = MainMenu.getSelectedOption();
+				if ( menuOptionSel == MainMenu::O_ARCADE)
+				{		
+					Level::PlayAgain = true;
+					while (Level::PlayAgain)
 					{
-						currLevel.StartTimer();
-						while (currLevel.isRunning())
-						{
-							//start game
-							while (SDL_PollEvent(&e) != 0)
-							{
-								//User requests quit
-								if (e.type == SDL_QUIT )
-								{
-									currLevel.exit();
-									menuOptionSel = MainMenu::O_EXIT;
-									break;
-								}
-
-								//Handle input for the dot
-								currLevel.handleDotEvent(e);
-							}
-
-							if (currLevel.isLost())
-							{
-								currLevel.StopTimer();
-								//"failure"-animation and GAMEOVER screen
- 								if (currLevel.potato->fail_anim() == 1) {
-									SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
-									SDL_RenderClear(gRenderer);
-									SDL_RenderPresent(gRenderer);
-									break;
-								}
-							}
-							else
-							{
-								//Move the dot
-								currLevel.potato->move();
-							}
-							currLevel.UpdateCamera();
-							currLevel.Draw();
+						//create level
+						Level currLevel = Level(gRenderer, SCREEN_WIDTH, SCREEN_HEIGHT);
+						//load level 
+						if (!currLevel.Load("level_1", "dot_1")) {
+							printf("Failed to initialize!\n");
 						}
-						currLevel.StopTimer();
-						if(menuOptionSel != MainMenu::O_EXIT){
+						else
+						{						
+							currLevel.StartTimer();
+							while (currLevel.isRunning())
+							{
+								//start game
+								while (SDL_PollEvent(&e) != 0)
+								{
+									//User requests quit
+									if (e.type == SDL_QUIT)
+									{
+										currLevel.exit();
+										break;
+									}
+									else if (e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_ESCAPE)
+									{
+										currLevel.pause();
+										break;
+									}
+
+									//Handle input for the dot
+									currLevel.handleDotEvent(e);
+								}
+
+								//Move the dot
+								currLevel.UpdateDot();
+								
+								currLevel.UpdateCamera();
+								currLevel.Draw();
+							}
+							if (!Level::PlayAgain) break;
+
+							currLevel.StopTimer();
 							Level::Result cResult = currLevel.GetResult();
-							int retry = ShowResultScreen(cResult);
-							if (retry == ResMenu::O_QUIT) {
-								menuOptionSel = MainMenu::BEGIN_BORDER;
+							RenderResults(cResult);//render to texture
+							GMenu ResultMenu(gRenderer,
+								{ "TRY AGAIN","EXIT" },
+								{ SCREEN_WIDTH / 2, 3*SCREEN_HEIGHT / 4, SCREEN_WIDTH / 2, SCREEN_HEIGHT / 4 },
+								"Resources/Fonts/Mf_July_Sky.ttf",
+								40,
+								{ 0,0,0 },
+								&gMenuPointer,
+								&gMenuBG
+								);
+							ResultMenu.Show();
+							switch (ResultMenu.getSelectedOption()) {
+							case ResMenu::O_RETRY:
+								break;
+							case ResMenu::O_QUIT:
+								Level::PlayAgain = false;
+								break;
 							}
-							else if (retry == ResMenu::O_RETRY) {
-								menuOptionSel = MainMenu::O_START;
-							}
-						}						
+						}
 					}					
+				}
+				else if (menuOptionSel == MainMenu::O_CAMPAIGN) {
+					GMenu CampaignMenu(gRenderer,
+						{ "Level 1","Level 2","Level 3" ,"Level 4" },
+						{ 0, 0, SCREEN_WIDTH , SCREEN_HEIGHT },
+						"Resources/Fonts/Mf_July_Sky.ttf",
+						40,
+						{ 0,0,0 },
+						&gMenuPointer,
+						NULL
+					);
+					CampaignMenu.Show();
+					switch (CampaignMenu.getSelectedOption())
+					{
+					default:
+						break;
+					}
 				}
 				else if (menuOptionSel == MainMenu::O_EXIT) {
 					quit = true;
@@ -292,17 +263,13 @@ bool loadMedia()
 	return success;
 }
 
-int ShowResultScreen(Level::Result r) {
+void RenderResults(Level::Result r) {
 	
 	LTexture* rsTimeTexture = new LTexture();
 	LTexture* rsCoinsTexture = new LTexture();
 	LTexture rsResultTexture;
-	LTexture rsRetryOptTexture;
-	LTexture rsExitOptTexture;
-	
-	int menuOption = ResMenu::O_RETRY, menuOptionSel = -1;
-	bool quit = false;
-	SDL_Event e;
+	LTexture ret;
+	gMenuBG.createBlank(gRenderer, SCREEN_WIDTH, SCREEN_HEIGHT,SDL_TEXTUREACCESS_TARGET);
 	TTF_Font* tF;
 
 	//result textures
@@ -349,83 +316,22 @@ int ShowResultScreen(Level::Result r) {
 		cc << (r.rTime / 1000) % 60 << "." << r.rTime % 1000;
 		rsTimeTexture->loadFromRenderedText(cc.str(), { 0,55,0 }, gRenderer, tF);
 	}
-
-	//menu textures
-	tF = TTF_OpenFont("Resources/Fonts/Mf_July_Sky.ttf", 25);//font could be unavailable
 	
-	rsRetryOptTexture.loadFromRenderedText("TRY AGAIN", { 0x00,0x00,0x00 }, gRenderer, tF);
-	SDL_Rect rsRetryOptDest = {
-		(SCREEN_WIDTH - gMenuStart.getWidth()) / 2,
-		SCREEN_HEIGHT - 180 + MainMenu::O_START * 30,
-		0,
-		0
-	};	
-	
-	rsExitOptTexture.loadFromRenderedText("EXIT", { 0x00,0x00,0x00 }, gRenderer, tF);
-	SDL_Rect rsExitOptDest = {
-		(SCREEN_WIDTH - gMenuExit.getWidth()) / 2,
-		SCREEN_HEIGHT - 180 + MainMenu::O_EXIT * 30,
-		0,
-		0
-	};
-	
-	SDL_Rect rsPointerDest = {
-		(SCREEN_WIDTH) / 2 - 80,
-		SCREEN_HEIGHT - 177 + menuOption * 30,
-		20,
-		20
-	};
-	
-	while (!quit)
-	{
-		//Handle events on queue
-		while (SDL_PollEvent(&e) != 0)
-		{
-			//User requests quit
-			if (e.type == SDL_QUIT )
-			{
-				quit = true;
-			}
-			else if (e.type == SDL_KEYDOWN) {
-				SDL_Keycode s = e.key.keysym.sym;
-				switch (s)
-				{
-				case SDLK_DOWN:
-					if (menuOption < ResMenu::E_BORDER - 1)
-						menuOption++;
-					break;
-				case SDLK_UP:
-					if (menuOption > ResMenu::B_BORDER + 1)
-						menuOption--;
-					break;
-				case SDLK_RETURN:
-					menuOptionSel = menuOption;
-					break;
-				default:
-					break;
-				}
-			}
-		}
+	gMenuBG.setAsRenderTarget(gRenderer);
+	//Clear screen
+	SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
+	SDL_RenderClear(gRenderer);
 
-		//Clear screen
-		SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
-		SDL_RenderClear(gRenderer);
+	if (rsCoinsTexture != NULL)
+		rsCoinsTexture->render(gRenderer, &rsCoinsDest);
+	if (rsTimeTexture != NULL)
+		rsTimeTexture->render(gRenderer, &rsTimeDest);
+	rsResultTexture.render(gRenderer, &rsResultDest);
+	
+	SDL_SetRenderTarget(gRenderer, NULL);
+//	gMenuBG.render(gRenderer, new SDL_Rect({ 0,0,0,0 }));
 
-		if (rsCoinsTexture != NULL)
-			rsCoinsTexture->render(gRenderer, &rsCoinsDest);
-		if (rsTimeTexture != NULL)
-			rsTimeTexture->render(gRenderer, &rsTimeDest);
-		rsResultTexture.render(gRenderer, &rsResultDest);
-
-		rsExitOptTexture.render(gRenderer, &rsExitOptDest);
-		rsRetryOptTexture.render(gRenderer, &rsRetryOptDest);
-		rsPointerDest.y = SCREEN_HEIGHT - 177 + menuOption * 30;
-		gMenuPointer.render(gRenderer, &rsPointerDest);
-		SDL_RenderPresent(gRenderer);
-		if (menuOptionSel != -1)
-			quit = true;
-	}
-	return menuOptionSel;
+//	SDL_RenderPresent(gRenderer);
 
 }
 

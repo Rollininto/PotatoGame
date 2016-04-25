@@ -11,6 +11,7 @@ class LTexture
 public:
 	//Initializes variables
 	LTexture();
+	LTexture(SDL_Texture * sdlTexture, int w, int h);
 
 	//Deallocates memory
 	~LTexture();
@@ -22,6 +23,8 @@ public:
 	//Creates image from font string
 	bool loadFromRenderedText(std::string textureText, SDL_Color textColor, SDL_Renderer* mRenderer, TTF_Font* tFont = NULL);
 #endif
+	//Creates blank texture
+	bool createBlank(SDL_Renderer* gR,int width, int height, SDL_TextureAccess access = SDL_TEXTUREACCESS_STREAMING);
 
 	//Deallocates texture
 	void free();
@@ -37,7 +40,8 @@ public:
 
 	//Renders texture at given point
 	void render( SDL_Renderer* mRenderer, SDL_Rect* dest, SDL_Rect* clip = NULL, SDL_Rect* tClips = NULL, double angle = 0.0, SDL_Point* center = NULL, SDL_RendererFlip flip = SDL_FLIP_NONE);
-
+	//Set self as render target
+	void setAsRenderTarget(SDL_Renderer * gR);
 	//Gets image dimensions
 	int getWidth();
 	int getHeight();

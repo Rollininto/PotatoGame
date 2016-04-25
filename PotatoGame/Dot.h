@@ -45,6 +45,7 @@ public:
 	int getCoinCountInt();
 	static enum States {
 		DOT_ALIVE,
+		DOT_DIE,
 		DOT_DEAD,
 		DOT_WON
 	};
