@@ -5,28 +5,69 @@
 #include <SDL_ttf.h>
 #include "LTexture.h"
 
+class GMenuOption {
+	std::string itemText;
+	bool available;
+	TTF_Font* itemFont;
+	SDL_Color itemColor;
+	LTexture itemTexture;
+public:
+	GMenuOption( std::string text, bool avail, SDL_Color col);
+	~GMenuOption();
+	void setFont(TTF_Font*tf);
+	void createTexture(SDL_Renderer* gR);
+	std::string Text();
+	LTexture* Texture();
+	bool Available();
+};
+
+class GMenuInfo {
+	std::string infoText;
+	SDL_Rect infoRect;
+	TTF_Font* infoFont;
+	SDL_Color infoColor;
+	LTexture infoTexture;
+
+public:
+	GMenuInfo(std::string text, SDL_Rect irect = {0,0,0,0}, SDL_Color color = { 50,50,50 });
+	~GMenuInfo();
+	void setFont(TTF_Font*tf);
+	void createTexture(SDL_Renderer* gR);
+	LTexture* Texture();
+};
+
 class GMenu
 {
+	struct aditionalOpt {
+		SDL_Keycode key;
+		void (* func)();
+	};
 	SDL_Renderer* gRenderer;
-	std::vector<std::string> Items;
+	SDL_Rect renderWindow;
+	std::vector<GMenuOption> Items;
 	SDL_Rect MenuRect;
-	const char* FontPath;
-	int fSize;
-	SDL_Color TextColor;
 	LTexture* bgTexture;
 	LTexture* PointTexture;
-
-	SDL_Rect PointRect;
-	std::vector<LTexture*> ItemTextures;
-	std::vector<SDL_Rect> ItemRects;
+	char* FontPath;
+	int fSize;
 	
+	std::vector<GMenuInfo> Infos;
+	std::vector<aditionalOpt> AditionalOptions;
+	SDL_Rect PointRect;
+	std::vector<SDL_Rect> ItemRects;
+	std::vector<SDL_Rect> InfoRects;
+	SDL_Rect InfoContainerRect;
+	int pad;
+
 	int currOption;
 	int selOption;
 	
 	void LoadTextures();	
 public:	
-	GMenu(SDL_Renderer*gR, std::vector<std::string> items, SDL_Rect mrect, const char* fPath, int fSz, SDL_Color miCol = {0,0,0}, LTexture* point = NULL, LTexture* bg = NULL);
+	GMenu(SDL_Renderer*gR, SDL_Rect rendWin, SDL_Rect mrect,  char* fPath, int fSz, LTexture* point = NULL, LTexture* bg = NULL, std::vector<GMenuOption> items = {});
 	~GMenu();
+	void setInfos(std::vector<GMenuInfo> infs);
+	void addOption(SDL_Keycode key, void (* func)());
 	void Show();
 	int getSelectedOption();
 };

@@ -50,5 +50,11 @@
     <ClInclude Include="GMenu.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Sounds.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="DataStorage.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

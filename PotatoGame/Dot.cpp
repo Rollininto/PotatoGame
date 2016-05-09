@@ -7,9 +7,10 @@ int Dot::LEVEL_JUMP_POWER = (int)(BlockBox::BOX_SIZE*0.5);
 double Dot::DOT_VEL = (int)(BlockBox::BOX_SIZE*0.1);
 
 
-Dot::Dot(std::vector<BlockBox*>* v, LTexture* t, SDL_Renderer* gR, int mapW, int mapH)
+Dot::Dot(std::vector<Mix_Chunk*>*s ,std::vector<BlockBox*>* v, LTexture* t, SDL_Renderer* gR, int mapW, int mapH)
 {	
 	lBlocks = v;
+	lSounds = s;
 	dTexture = t;
 	gRenderer = gR;
 	
@@ -51,8 +52,9 @@ void Dot::handleEvent(SDL_Event& e)
 		case SDLK_RIGHT: break;
 		case SDLK_SPACE:
 			if (_grounded) {
-				mVelY -= LEVEL_JUMP_POWER;
+				mVelY = - LEVEL_JUMP_POWER;
 				_grounded = false;
+				Mix_PlayChannel(-1, lSounds->at(Sounds::SE_JUMP), 0);
 			}
 			break;
 		}
@@ -67,6 +69,7 @@ void Dot::move()
 	
 		//Check collision with left side of platform - what to do?
 		int sz = lBlocks->size();
+		bool collides_x = false;
 		for (int i = 0; i < sz; i++) {
 			SDL_Rect r = lBlocks->at(i)->getRect();
 			if (check_collision(r))
@@ -76,6 +79,7 @@ void Dot::move()
 				{
 					mPosX -= (int)mVelX;
 					mVelX = 0;
+					collides_x = true;
 				}
 				else if (type == BlockBox::BL_OBSTACLE)
 				{
@@ -86,8 +90,9 @@ void Dot::move()
 			else
 			{
 				mVelX = DOT_VEL;
-			}	
+			}
 		}
+
 		if (mPosX < 0)
 		{
 			mPosX -= (int)mVelX;
@@ -104,9 +109,10 @@ void Dot::move()
 			mVelX = DOT_VEL;
 			tFlip = SDL_FLIP_HORIZONTAL;
 		}
-
-		//Move the dot up or down (jump, fall)	
+	
+		
 		bool collides_y = false;
+		//Move the dot up or down (jump, fall)	
 		mVelY += 0.5*LEVEL_GRAVITY;
 		mPosY += (int)mVelY;
 		int exits = 0;//checking if dot exits level
@@ -123,15 +129,24 @@ void Dot::move()
 						mPosY = r.y + r.h;
 					else
 						mPosY = r.y - DOT_HEIGHT;
-					mVelY = 0;
+					mVelY = 1;
 					if (r.y > mPosY)
 						_grounded = true;
 					//break;//???
 				}
 				else if (type == BlockBox::BL_OBSTACLE)
 				{
+					if (State == States::DOT_ALIVE) {
+						if (mPosY > r.y)
+							mPosY = r.y + r.h;
+						else
+							mPosY = r.y - DOT_HEIGHT;
+						Mix_PlayChannel(-1, lSounds->at(Sounds::SE_DEATH), 0);
+					}
+					mVelY = 0;
 					_grounded = false;
 					State = States::DOT_DIE;
+					
 					break;//!!!
 				}
 				else if (type == BlockBox::BL_COLLECTABLE)
@@ -139,6 +154,7 @@ void Dot::move()
 					if (!b->is_collected()) {
 						b->collect();
 						mCoins++;
+						Mix_PlayChannel(-1, lSounds->at(Sounds::SE_COIN), 0);
 					}
 				}
 				else if (type == BlockBox::BL_DOOR && BlockBox::DOOR_OPEN == 1)
@@ -151,8 +167,8 @@ void Dot::move()
 				}
 			}
 		}
-		//if(_grounded&&!collides_y)
-			//_grounded = false;
+		if( !collides_y && _grounded )
+			_grounded = false;
 	
 		//If the dot went too far up
 		if ((mPosY < 0))
@@ -164,7 +180,7 @@ void Dot::move()
 
 		if (State == States::DOT_DIE) {
 			stop();
-			mVelY = -5;
+			mVelY = -8;
 		}
 	}
 	else if (State == States::DOT_DIE) {
@@ -218,12 +234,18 @@ int Dot::getState()
 	return State;
 }
 
+LTexture * Dot::getTexture()
+{
+	return dTexture;
+}
+
+
 void Dot::render(int camX, int camY)
 {
 	//Show the dot relative to the camera
 	SDL_Rect dest = { mPosX - camX ,mPosY - camY,DOT_WIDTH,DOT_HEIGHT };
-	SDL_SetRenderDrawColor(gRenderer, 255, 0, 0, 0);
-	SDL_RenderDrawRect(gRenderer, &dest);
+	//SDL_SetRenderDrawColor(gRenderer, 255, 0, 0, 0);
+	//SDL_RenderDrawRect(gRenderer, &dest);
 	dTexture->render(gRenderer, &dest, NULL,NULL,0.0,0,tFlip);
 }
 

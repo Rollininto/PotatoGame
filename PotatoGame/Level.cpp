@@ -3,13 +3,15 @@
 SDL_Rect Level::DOOR_CLOSED_CLIPS = { 0,0,4,2 };
 SDL_Rect Level::DOOR_OPENED_CLIPS = { 2,2,4,2 };
 SDL_Rect Level::COIN_CLIPS = { 0,0,4,2};
-SDL_Rect Level::OBST_CLIPS = { 0,0,1,1 };
+SDL_Rect Level::OBST_UP_CLIPS = { 0,0,2,1 };
+SDL_Rect Level::OBST_DOWN_CLIPS = { 1,0,2,1 };
 SDL_Rect Level::GROUND_CLIPS = {0,0,1,1};
 int Level::T_ANIMATE = 0;
 bool Level::PlayAgain = true;
+bool Level::ShowResult = true;
 
 
-Level::Level(SDL_Renderer* gR, int w, int h) : lTextures(BlockBox::BL_TYPENUM)
+Level::Level(SDL_Renderer* gR, int w, int h) : lTextures(BlockBox::BL_TYPENUM),lSounds(Sounds::SE_TOTAL)
 {
 	gRenderer = gR;
 	
@@ -18,8 +20,6 @@ Level::Level(SDL_Renderer* gR, int w, int h) : lTextures(BlockBox::BL_TYPENUM)
 		lTextures[i] = new LTexture();
 	}
 	
-	
-
 	lCoinsTexture = new LTexture();
 	lTimeTexture = new LTexture();
 	Width = 0;
@@ -36,7 +36,8 @@ Level::~Level()
 	for (LTexture* t : lTextures) {
 		t->free();
 		t = NULL;	
-	}	
+	}
+	SDL_RemoveTimer(timerCoinRot);
 }
 
 void Level::handleDotEvent(SDL_Event & e)
@@ -44,39 +45,43 @@ void Level::handleDotEvent(SDL_Event & e)
 	potato->handleEvent(e);
 }
 
-bool Level::Load(std::string levelName, std::string PotatoStyle)
+bool Level::Load(int lvlNum, std::string PotatoStyle)
 {
+	std::ostringstream ss("");
+	ss << "level_" << lvlNum;
+	std::string levelName = ss.str();
+
 	bool levelLoaded = true;
 	//Load background texture
 	if (!lTextures[BlockBox::BL_EMPTY]->loadFromFile("Resources/" + levelName + "/bg.png", gRenderer))
 	{
-		printf("Failed to load background texture!\n");
+		OutputDebugString("Failed to load background texture!\n");
 		levelLoaded = false;
 	}
 
 	//Load earth texture
 	if (!lTextures[BlockBox::BL_GROUND]->loadFromFile("Resources/" + levelName + "/01.png", gRenderer))
 	{
-		printf("Failed to load earth block texture!\n");
+		OutputDebugString("Failed to load earth block texture!\n");
 		levelLoaded = false;
 	}
 
 	//Load obstacle texture
 	if (!lTextures[BlockBox::BL_OBSTACLE]->loadFromFile("Resources/" + levelName + "/02.png", gRenderer))
 	{
-		printf("Failed to load obstacle block texture!\n");
+		OutputDebugString("Failed to load obstacle block texture!\n");
 		levelLoaded = false;
 	}
 
 	//Load coin texture
-	if (!lTextures[BlockBox::BL_COLLECTABLE]->loadFromFile("Resources/03.png", gRenderer))
+	if (!lTextures[BlockBox::BL_COLLECTABLE]->loadFromFile("Resources/Common/03.png", gRenderer))
 	{
-		printf("Failed to load coin block texture!\n");
+		OutputDebugString("Failed to load coin block texture!\n");
 		levelLoaded = false;
 	}
 	//Load door tezture
 	if (!lTextures[BlockBox::BL_DOOR]->loadFromFile("Resources/" + levelName + "/door.png", gRenderer)) {
-		printf("Failed to load door block texture!\n");
+		OutputDebugString("Failed to load door block texture!\n");
 		levelLoaded = false;
 	}
 
@@ -84,11 +89,48 @@ bool Level::Load(std::string levelName, std::string PotatoStyle)
 	LTexture* tmp = new LTexture();
 	if (!tmp->loadFromFile("Resources/Dots/"+PotatoStyle+".png", gRenderer))
 	{
-		printf("Failed to load coin block texture!\n");
+		OutputDebugString("Failed to load coin block texture!\n");
+		levelLoaded = false;
+	}
+	lLevelMusic = Mix_LoadMUS("Resources/Sounds/game.wav");
+	if (lLevelMusic == NULL) {
+		std::stringstream ss;
+		ss << "Failed to load /game.wav! SDL_mixer Error: "<< Mix_GetError()<<"\n";
+		OutputDebugString(ss.str().c_str());
+		levelLoaded= false;
+	}
+	
+	lSounds[Sounds::SE_COIN] = Mix_LoadWAV("Resources/Sounds/coin.wav");
+	if (lSounds[Sounds::SE_COIN] == NULL) {
+		std::stringstream ss;
+		ss << "Failed to load /coin.wav! SDL_mixer Error: "<< Mix_GetError()<<"\n";
+		OutputDebugString(ss.str().c_str());
+		levelLoaded = false;
+	}
+
+	lSounds[Sounds::SE_DEATH] = Mix_LoadWAV("Resources/Sounds/death.wav");
+	if (lSounds[Sounds::SE_DEATH] == NULL) {
+		std::stringstream ss;
+		ss << "Failed to load /death.wav! SDL_mixer Error: "<< Mix_GetError()<<"\n";
+		OutputDebugString(ss.str().c_str());
 		levelLoaded = false;
 	}
 	
-
+	lSounds[Sounds::SE_DOOR] = Mix_LoadWAV("Resources/Sounds/door.wav");
+	if (lSounds[Sounds::SE_DOOR] == NULL) {
+		std::stringstream ss;
+		ss << "Failed to load /door.wav! SDL_mixer Error: "<< Mix_GetError()<<"\n";
+		OutputDebugString(ss.str().c_str());
+		levelLoaded = false;
+	}
+	
+	lSounds[Sounds::SE_JUMP] = Mix_LoadWAV("Resources/Sounds/jump.wav");
+	if (lSounds[Sounds::SE_JUMP] == NULL) {
+		std::stringstream ss;
+		ss << "Failed to load /jump.wav! SDL_mixer Error: "<< Mix_GetError()<<"\n";
+		OutputDebugString(ss.str().c_str()); 
+		levelLoaded = false;
+	}
 	int x = 0, y = 0;
 	
 	SDL_Rect init_rect = { 0, 0, BlockBox::BOX_SIZE, BlockBox::BOX_SIZE};
@@ -96,7 +138,7 @@ bool Level::Load(std::string levelName, std::string PotatoStyle)
 	std::ifstream map("Resources/" + levelName + ".map");
 	if (!map.good())
 	{
-		printf("Unable to load map file!\n");
+		OutputDebugString("Unable to load map file!\n");
 		levelLoaded = false;
 	}
 	else
@@ -116,18 +158,21 @@ bool Level::Load(std::string levelName, std::string PotatoStyle)
 					case BlockBox::BL_DOOR:
 						DOOR_CLOSED_CLIPS.x = door_clips % 2;
 						DOOR_CLOSED_CLIPS.y = (int)(door_clips / 2);
-						lBlocks.push_back(new BlockBox(init_rect, blockType, lTextures[blockType], DOOR_CLOSED_CLIPS));
+						lBlocks.push_back(new BlockBox(init_rect, BlockBox::BL_DOOR, lTextures[BlockBox::BL_DOOR], DOOR_CLOSED_CLIPS));
 						door_clips++;
 						break;
 					case BlockBox::BL_COLLECTABLE:
-						lBlocks.push_back(new BlockBox(init_rect, blockType, lTextures[blockType], COIN_CLIPS));
+						lBlocks.push_back(new BlockBox(init_rect, BlockBox::BL_COLLECTABLE, lTextures[BlockBox::BL_COLLECTABLE], COIN_CLIPS));
 						lCoinsCount++;
 						break;
 					case BlockBox::BL_OBSTACLE:
-						lBlocks.push_back(new BlockBox(init_rect, blockType, lTextures[blockType], OBST_CLIPS));
+						lBlocks.push_back(new BlockBox(init_rect, BlockBox::BL_OBSTACLE, lTextures[BlockBox::BL_OBSTACLE], OBST_UP_CLIPS));
+						break;
+					case BlockBox::BL_OBSTACLE + 10:
+						lBlocks.push_back(new BlockBox(init_rect, BlockBox::BL_OBSTACLE, lTextures[BlockBox::BL_OBSTACLE], OBST_DOWN_CLIPS));
 						break;
 					case BlockBox::BL_GROUND:
-						lBlocks.push_back(new BlockBox(init_rect, blockType, lTextures[blockType], GROUND_CLIPS));
+						lBlocks.push_back(new BlockBox(init_rect, BlockBox::BL_GROUND, lTextures[BlockBox::BL_GROUND], GROUND_CLIPS));
 						break;
 					default:
 						break;
@@ -141,18 +186,21 @@ bool Level::Load(std::string levelName, std::string PotatoStyle)
 		Height = y;
 	}
 	map.close();
-	//count background scaling - for bg images smaller then screen
-	double kw = (double) lTextures[BlockBox::BL_EMPTY]->getWidth() / Width;
-	double kh = (double) lTextures[BlockBox::BL_EMPTY]->getHeight() / Height;
-	bg_scale = SDL_min(kw, kh);
-	//creating personage
-	potato = new Dot(&lBlocks, tmp, gRenderer, Width, Height);
+	if (levelLoaded) {
+		//count background scaling - for bg images smaller then screen
+		double kw = (double)lTextures[BlockBox::BL_EMPTY]->getWidth() / Width;
+		double kh = (double)lTextures[BlockBox::BL_EMPTY]->getHeight() / Height;
+		bg_scale = SDL_min(kw, kh);
+		//creating personage
+		potato = new Dot(&lSounds, &lBlocks, tmp, gRenderer, Width, Height);
 
-	is_running = true;
-	Level::T_ANIMATE = 0;
-	SDL_TimerID timerID = SDL_AddTimer( 250, CoinAnimate, NULL);
-	
+		is_running = true;
+		Level::T_ANIMATE = 0;
+		timerCoinRot = SDL_AddTimer(250, CoinAnimate, NULL);
 
+		//Play the music 
+		Mix_PlayMusic(lLevelMusic, -1);
+	}
 	return levelLoaded;
 }
 
@@ -166,8 +214,10 @@ void Level::Draw()
 	//Render score	
 	int gotCoins = potato->getCoinCountInt();
 	//if(gotCoins == CoinsCount)
-	if (gotCoins >= 7)//temporary for tests
+	if (gotCoins >= 7 && BlockBox::DOOR_OPEN == 0) {//temporary for tests
 		BlockBox::DOOR_OPEN = 1;
+		Mix_PlayChannel(-1, lSounds[Sounds::SE_DOOR], 0);
+	}
 	if (lCoinsTexture->loadFromRenderedText("Coins: " + potato->getCoinCountStr() + " / 10", { 0,0,0 }, gRenderer)) {
 		SDL_Rect dest = {0,0,0,0};
 		lCoinsTexture->render(gRenderer, &dest);
@@ -216,7 +266,7 @@ void Level::DrawBack()
 
 	int cam_w = lTextures[BlockBox::BL_EMPTY]->getWidth() / 2;
 	if (lCamera.x > cam_w) {
-		new_camera.x = lCamera.x % cam_w;
+		//new_camera.x = lCamera.x % cam_w;
 	}
 	SDL_Rect dest = { 0, 0, lCamera.w, lCamera.h };
 	lTextures[BlockBox::BL_EMPTY]->render(gRenderer, &dest, &new_camera);
@@ -224,10 +274,11 @@ void Level::DrawBack()
 
 void Level::UpdateCamera()
 {
+	int shift = 200;
 	if (potato->DOT_VEL>0)
-		lCamera.x = potato->getPosX() - 150;
+		lCamera.x = potato->getPosX() - shift;
 	else
-		lCamera.x = potato->getPosX() - lCamera.w + 150;
+		lCamera.x = potato->getPosX() - lCamera.w + shift;
 	int br = potato->getPosY();
 	lCamera.y = (potato->getPosY() + Dot::DOT_HEIGHT) - lCamera.h / 2;
 	//camera.x = 0;
@@ -285,18 +336,22 @@ void Level::exit()
 	title.render(gRenderer, new SDL_Rect({ ( lCamera.w - title.getWidth() ) / 2, lCamera.h/4 - title.getHeight(), 0, 0}));
 	SDL_SetRenderTarget(gRenderer, NULL);
 	GMenu QuitMenu(gRenderer,
-		{ "QUIT","CANCEL" },
+		{0,0,lCamera.w, lCamera.h},
 		{ 0, lCamera.h / 4, lCamera.w, lCamera.h / 2 },
 		"Resources/Fonts/Mf_July_Sky.ttf",
 		40,
-		{ 55,0,0 },
 		NULL,
-		&bgFromLevel
+		&bgFromLevel, 
+		{
+			GMenuOption("QUIT",true,{ 125,0,0 }),
+			GMenuOption("CANCEL",true,{ 125,0,0 })
+		}
 		);
 	QuitMenu.Show();
 	switch (QuitMenu.getSelectedOption())
 	{
 	case 0:
+		Level::ShowResult = false;
 		is_running = false;
 		Level::PlayAgain = false;
 		break;
@@ -324,14 +379,22 @@ void Level::pause()
 	title.loadFromRenderedText("PAUSE", { 0,0,0 }, gRenderer, TTF_OpenFont("Resources/Fonts/Mf_July_Sky.ttf", 50));
 	title.render(gRenderer, new SDL_Rect({ (9 * lCamera.w / 5 - title.getWidth())/ 2, 10, 0, 0 }));
 	SDL_SetRenderTarget(gRenderer, NULL);
+	LTexture* point = potato->getTexture();
 	GMenu PauseMenu(gRenderer,
-		{ "Resume","Quit" },
+		{ 0,0,lCamera.w, lCamera.h },
+		//{ "Resume", "Restart","Quit" },
+		//{ 1, 1, 1},
 		{ 4*lCamera.w/5, 80, lCamera.w/5, lCamera.h - 80 },
 		"Resources/Fonts/Mf_July_Sky.ttf",
 		40,
-		{ 0,0,0 },
-		NULL,
-		&bgFromLevel
+		//{ 0,0,0 },
+		point,
+		&bgFromLevel,
+		{
+			GMenuOption("Resume",true,{ 0,0,0 }),
+			GMenuOption("Restart",true,{ 0,0,0 }),
+			GMenuOption("Quit",true,{ 0,0,0 })
+		}
 		);
 	PauseMenu.Show();
 	switch (PauseMenu.getSelectedOption())
@@ -341,8 +404,12 @@ void Level::pause()
 		break;
 	case 1:
 		is_running = false;
-		//Level::PlayAgain = false;
-		
+		Level::ShowResult = false;
+		break;
+	case 2:
+		is_running = false;
+		Level::PlayAgain = false;
+		Level::ShowResult = false;
 		break;
 	default:
 		break;

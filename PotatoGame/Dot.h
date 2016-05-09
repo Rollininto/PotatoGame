@@ -1,9 +1,11 @@
 #pragma once
 #include <SDL.h>
+#include <SDL_mixer.h>
 #include <stdlib.h>
 #include <string>
 #include <vector>
 #include <sstream>
+#include "Sounds.h"
 #include "LTexture.h"
 #include "BlockBox.h"
 
@@ -21,7 +23,7 @@ public:
 	bool _grounded = false;
 
 	//Initializes the variables
-	Dot(std::vector<BlockBox*>* v, LTexture* t, SDL_Renderer* gR, int mapW, int mapH);
+	Dot(std::vector<Mix_Chunk*> *s,std::vector<BlockBox*>* v, LTexture* t, SDL_Renderer* gR, int mapW, int mapH);
 	~Dot();
 
 	//Takes key presses and adjusts the dot's velocity
@@ -33,6 +35,7 @@ public:
 	void stop();
 	int fail_anim();
 	int getState();
+	LTexture* getTexture();
 
 	//Shows the dot on the screen relative to the camera
 	void render(int camX, int camY);
@@ -64,6 +67,7 @@ private:
 
 	LTexture* dTexture;
 	std::vector<BlockBox*>*lBlocks;
+	std::vector<Mix_Chunk*>* lSounds;
 	SDL_Renderer* gRenderer;
 
 	SDL_RendererFlip tFlip;

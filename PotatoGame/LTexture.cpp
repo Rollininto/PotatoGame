@@ -15,6 +15,24 @@ LTexture::LTexture(SDL_Texture* sdlTexture, int w, int h)
 	mHeight = h;
 }
 
+LTexture::LTexture(SDL_Renderer* gRen, SDL_Surface* sdlSurf)
+{
+	SDL_Texture* newTexture = SDL_CreateTextureFromSurface(gRen, sdlSurf);
+	if (newTexture == NULL)
+	{
+		std::stringstream ss;
+		ss << "Unable to create texture from surface! SDL_image Error:" << IMG_GetError();
+		OutputDebugString(ss.str().c_str());
+	}
+	else
+	{
+		//Get image dimensions
+			mWidth = sdlSurf->w;
+			mHeight = sdlSurf->h;
+	}
+	mTexture = newTexture;
+}
+
 LTexture::~LTexture()
 {
 	//Deallocate
@@ -33,7 +51,9 @@ bool LTexture::loadFromFile(std::string path, SDL_Renderer* mRenderer, int newWi
 	SDL_Surface* loadedSurface = IMG_Load(path.c_str());
 	if (loadedSurface == NULL)
 	{
-		printf("Unable to load image %s! SDL_image Error: %s\n", path.c_str(), IMG_GetError());
+		std::stringstream ss;
+		ss << "Unable to load image "+ path +"! SDL_image Error:"<< IMG_GetError();
+		OutputDebugString(ss.str().c_str());
 	}
 	else
 	{
@@ -44,7 +64,9 @@ bool LTexture::loadFromFile(std::string path, SDL_Renderer* mRenderer, int newWi
 		newTexture = SDL_CreateTextureFromSurface(mRenderer, loadedSurface);
 		if (newTexture == NULL)
 		{
-			printf("Unable to create texture from %s! SDL Error: %s\n", path.c_str(), SDL_GetError());
+			std::stringstream ss;
+			ss << "Unable to create texture from " + path + "! SDL_image Error:" << IMG_GetError();
+			OutputDebugString(ss.str().c_str());
 		}
 		else
 		{
@@ -90,7 +112,9 @@ bool LTexture::loadFromRenderedText(std::string textureText, SDL_Color textColor
 			mTexture = SDL_CreateTextureFromSurface(mRenderer, textSurface);
 			if (mTexture == NULL)
 			{
-				printf("Unable to create texture from rendered text! SDL Error: %s\n", SDL_GetError());
+				std::stringstream ss;
+				ss << "Unable to create texture from rendered text! SDL Error: "<< SDL_GetError();
+				OutputDebugString(ss.str().c_str());
 			}
 			else
 			{
@@ -104,12 +128,14 @@ bool LTexture::loadFromRenderedText(std::string textureText, SDL_Color textColor
 		}
 		else
 		{
-			printf("Unable to render text surface! SDL_ttf Error: %s\n", TTF_GetError());
+			std::stringstream ss;
+			ss << "Unable to render text surface! SDL_ttf Error: %s\n", TTF_GetError();
+			OutputDebugString(ss.str().c_str());
 		}
 	}
 	else
 	{
-		printf("Unable to open font file! ( Resourses/Fonts/airstrike.ttf )");
+		OutputDebugString("Unable to open font file! ( Resourses/Fonts/airstrike.ttf )");
 	}
 	//Return success
 	return mTexture != NULL;
@@ -121,7 +147,9 @@ bool LTexture::createBlank(SDL_Renderer* gR,int width, int height, SDL_TextureAc
 	mTexture = SDL_CreateTexture(gR, SDL_PIXELFORMAT_UNKNOWN, access, width, height);
 	if (mTexture == NULL)
 	{
-		printf("Unable to create blank texture! SDL Error: %s\n", SDL_GetError());
+		std::stringstream ss;
+		ss << "Unable to create blank texture! SDL Error: %s\n", SDL_GetError();
+		OutputDebugString(ss.str().c_str()); 
 	}
 	else
 	{

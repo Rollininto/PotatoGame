@@ -2,8 +2,13 @@
 #include <SDL.h>
 #include <SDL_image.h>
 #include <SDL_ttf.h>
+#include <iostream>
 #include <stdlib.h>
 #include <string>
+#include <Windows.h>
+#include <WinBase.h>
+#include <sstream>
+
 
 //LTexture class
 class LTexture
@@ -12,6 +17,7 @@ public:
 	//Initializes variables
 	LTexture();
 	LTexture(SDL_Texture * sdlTexture, int w, int h);
+	LTexture(SDL_Renderer* gRen, SDL_Surface* sdlSurf);
 
 	//Deallocates memory
 	~LTexture();
