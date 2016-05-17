@@ -33,4 +33,5 @@ public:
 	};
 	void collect();
 	bool is_collected();
+	bool is_remowed();
 };

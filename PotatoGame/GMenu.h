@@ -67,7 +67,7 @@ public:
 	GMenu(SDL_Renderer*gR, SDL_Rect rendWin, SDL_Rect mrect,  char* fPath, int fSz, LTexture* point = NULL, LTexture* bg = NULL, std::vector<GMenuOption> items = {});
 	~GMenu();
 	void setInfos(std::vector<GMenuInfo> infs);
-	void addOption(SDL_Keycode key, void (* func)());
+	void addHotKeyOption(SDL_Keycode key, void (* func)());
 	void Show();
 	int getSelectedOption();
 };

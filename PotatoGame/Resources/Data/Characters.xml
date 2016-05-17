@@ -1,0 +1,5 @@
+<Characters>
+	<Character Id = "1" Path = "Resources/Dots/dot_1.png"/>
+	<Character Id = "2" Path = "Resources/Dots/dot_2.png"/>
+	<Character Id = "0" Path = "Resources/Dots/dot_3.png"/>
+</Characters>

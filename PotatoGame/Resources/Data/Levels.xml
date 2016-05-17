@@ -1,0 +1,7 @@
+<Levels>
+    <Level Id="1" Title="Level 1" ReqCoins="7" BonusCoins="3" BestTime="0" BestUser=""/>
+    <Level Id="2" Title="Level 2" ReqCoins="7" BonusCoins="3" BestTime="0" BestUser=""/>
+    <Level Id="3" Title="Level 3" ReqCoins="7" BonusCoins="3" BestTime="0" BestUser=""/>
+    <Level Id="4" Title="Level 4" ReqCoins="7" BonusCoins="3" BestTime="0" BestUser=""/>
+    <Level Id="5" Title="Level 5" ReqCoins="7" BonusCoins="3" BestTime="0" BestUser=""/>
+</Levels>

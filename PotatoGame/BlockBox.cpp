@@ -77,3 +77,7 @@ void BlockBox::collect() {
 bool BlockBox::is_collected() {
 	return collected != Collection::NO;
 }
+
+bool BlockBox::is_remowed() {
+	return collected == Collection::YES;
+}

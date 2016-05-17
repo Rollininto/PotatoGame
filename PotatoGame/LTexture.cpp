@@ -101,8 +101,11 @@ bool LTexture::loadFromRenderedText(std::string textureText, SDL_Color textColor
 {
 	//Get rid of preexisting texture
 	free();
-	if(tFont == NULL)
-		tFont = TTF_OpenFont("Resources/Fonts/airstrike.ttf", 16);//font could be unavailable
+	bool fontUnload = false;
+	if (tFont == NULL) {
+		tFont = TTF_OpenFont(GAME_DEFAULT_FONT_PATH, 16);//font could be unavailable
+		fontUnload = true;
+	}
 	if(tFont != NULL){
 		//Render text surface
 		SDL_Surface* textSurface = TTF_RenderText_Solid(tFont, textureText.c_str(), textColor);
@@ -138,6 +141,10 @@ bool LTexture::loadFromRenderedText(std::string textureText, SDL_Color textColor
 		OutputDebugString("Unable to open font file! ( Resourses/Fonts/airstrike.ttf )");
 	}
 	//Return success
+	if (fontUnload)
+	{
+		TTF_CloseFont(tFont);
+	}
 	return mTexture != NULL;
 }
 bool LTexture::createBlank(SDL_Renderer* gR,int width, int height, SDL_TextureAccess access)

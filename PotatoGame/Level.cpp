@@ -15,8 +15,8 @@ Level::Level(SDL_Renderer* gR, int w, int h) : lTextures(BlockBox::BL_TYPENUM),l
 {
 	gRenderer = gR;
 	
-	int size = lTextures.size();
-	for (int i = 0; i < size; i++) {
+	int tsize = lTextures.size();
+	for (int i = 0; i < tsize; i++) {
 		lTextures[i] = new LTexture();
 	}
 	
@@ -28,16 +28,35 @@ Level::Level(SDL_Renderer* gR, int w, int h) : lTextures(BlockBox::BL_TYPENUM),l
 	
 	BlockBox::DOOR_OPEN = 0;
 	Dot::DOT_VEL = (int)(BlockBox::BOX_SIZE*0.1);
+	int ssize = lSounds.size();
+	for (int i = 0; i < ssize; i++) {
+		lSounds[i] = NULL;
+	}
 }
 
 
 Level::~Level()
 {
 	for (LTexture* t : lTextures) {
-		t->free();
-		t = NULL;	
+		if (t != NULL) {
+			t->free();
+			t = NULL;
+		}
+		
+	}
+	for (Mix_Chunk* mc : lSounds) {
+		if (mc != NULL) {
+			Mix_FreeChunk(mc);
+		}
+	}
+	for (BlockBox* b : lBlocks) {
+		b = NULL;
+	}
+	if (lLevelMusic != NULL) {
+		Mix_FreeMusic(lLevelMusic);
 	}
 	SDL_RemoveTimer(timerCoinRot);
+	
 }
 
 void Level::handleDotEvent(SDL_Event & e)
@@ -45,11 +64,14 @@ void Level::handleDotEvent(SDL_Event & e)
 	potato->handleEvent(e);
 }
 
-bool Level::Load(int lvlNum, std::string PotatoStyle)
+bool Level::Load(int lvlNum, Character userPotato)
 {
+	lvlId = lvlNum;
 	std::ostringstream ss("");
 	ss << "level_" << lvlNum;
 	std::string levelName = ss.str();
+	ss.str("");
+	std::string PotatoPath = userPotato.path;
 
 	bool levelLoaded = true;
 	//Load background texture
@@ -87,7 +109,7 @@ bool Level::Load(int lvlNum, std::string PotatoStyle)
 
 	//Load dot texture
 	LTexture* tmp = new LTexture();
-	if (!tmp->loadFromFile("Resources/Dots/"+PotatoStyle+".png", gRenderer))
+	if (!tmp->loadFromFile(PotatoPath, gRenderer))
 	{
 		OutputDebugString("Failed to load coin block texture!\n");
 		levelLoaded = false;
@@ -187,6 +209,8 @@ bool Level::Load(int lvlNum, std::string PotatoStyle)
 	}
 	map.close();
 	if (levelLoaded) {
+		lLevelData = DataStorage::getLevelData(lvlId);
+
 		//count background scaling - for bg images smaller then screen
 		double kw = (double)lTextures[BlockBox::BL_EMPTY]->getWidth() / Width;
 		double kh = (double)lTextures[BlockBox::BL_EMPTY]->getHeight() / Height;
@@ -210,7 +234,7 @@ void Level::Draw()
 	SDL_RenderClear(gRenderer);
 
 	DrawBack();
-
+	
 	//Render score	
 	int gotCoins = potato->getCoinCountInt();
 	//if(gotCoins == CoinsCount)
@@ -218,10 +242,11 @@ void Level::Draw()
 		BlockBox::DOOR_OPEN = 1;
 		Mix_PlayChannel(-1, lSounds[Sounds::SE_DOOR], 0);
 	}
-	if (lCoinsTexture->loadFromRenderedText("Coins: " + potato->getCoinCountStr() + " / 10", { 0,0,0 }, gRenderer)) {
-		SDL_Rect dest = {0,0,0,0};
-		lCoinsTexture->render(gRenderer, &dest);
-	}
+
+	std::ostringstream CoinsStr("");
+	CoinsStr << lLevelData.reqCoins;
+
+	lCoinsTexture->loadFromRenderedText("Coins: " + potato->getCoinCountStr() + " / " + CoinsStr.str(), { 0,0,0 }, gRenderer);
 	Uint32 ticks = getTimer();
 	std::ostringstream TimeStr;
 	TimeStr.str("");
@@ -231,11 +256,9 @@ void Level::Draw()
 	TimeStr.fill('0');
 	TimeStr.width(2); 
 	TimeStr << (ticks / 1000) % 60 << "." << ticks % 1000;
-	if (lTimeTexture->loadFromRenderedText("Time: " + TimeStr.str() , { 0,0,0 }, gRenderer)) {		
-		SDL_Rect dest = { 0, lCoinsTexture->getHeight(),0,0 };
-		lTimeTexture->render(gRenderer, &dest);
-	}
-
+	lTimeTexture->loadFromRenderedText("Time: " + TimeStr.str(), { 0,0,0 }, gRenderer);
+	TimeStr.clear();
+	
 	//Render map
 	bool animated = false;
 	if (Level::T_ANIMATE == 1) {
@@ -243,15 +266,26 @@ void Level::Draw()
 		animated = true;
 	}
 	int size = lBlocks.size();
-	for (int i = 0; i < size; i++) {
-		BlockBox* b = lBlocks[i];
-		b->render(gRenderer, lCamera);
+	for (int i = 0; i < size; i++) {		
+		if (lBlocks[i]->is_remowed()) {
+			lBlocks.erase(lBlocks.begin()+i);
+			i--;
+			size--;
+		}else{ 
+			lBlocks[i]->render(gRenderer, lCamera); 
+		}
 	}
 	if (animated)
 		Level::T_ANIMATE = 0;
 	BlockBox::COIN_ANIM_NEXT = 0;
 	potato->render(lCamera.x, lCamera.y);
-	SDL_RenderPresent(gRenderer);
+	lCoinsTexture->render(gRenderer, new SDL_Rect({ 0, 0, 0, 0 }));
+	
+	lTimeTexture->render(gRenderer, new SDL_Rect({ 0, lCoinsTexture->getHeight(),0,0 }));
+
+ 	SDL_RenderPresent(gRenderer);
+	lTimeTexture->free();
+	lCoinsTexture->free();
 }
 
 void Level::DrawBack()
@@ -306,6 +340,16 @@ void Level::UpdateDot() {
 	potato->move();
 	if (potato->getState() == Dot::States::DOT_DIE)
 		StopTimer();
+}
+
+void Level::UpdateDoor()
+{
+	int gotCoins = potato->getCoinCountInt();
+	//if(gotCoins == CoinsCount)
+	if (gotCoins >= lLevelData.reqCoins && BlockBox::DOOR_OPEN == 0) {//temporary for tests
+		BlockBox::DOOR_OPEN = 1;
+		Mix_PlayChannel(-1, lSounds[Sounds::SE_DOOR], 0);
+	}
 }
 
 bool Level::isLost()
@@ -419,8 +463,9 @@ void Level::pause()
 Level::Result Level::GetResult()
 {
 	Result res;
+	res.lvlId = lvlId;
 	res.rGotCoins = potato->getCoinCountInt();
-	res.rMaxCoins = lCoinsCount;
+	res.rMaxCoins = lLevelData.reqCoins;
 	res.rLost = isLost();
 	res.rTime = getTimer();
 	return res;

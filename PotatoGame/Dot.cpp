@@ -33,6 +33,8 @@ Dot::Dot(std::vector<Mix_Chunk*>*s ,std::vector<BlockBox*>* v, LTexture* t, SDL_
 Dot::~Dot()
 {
 	dTexture->free();
+	lBlocks = NULL;
+	lSounds = NULL;
 }
 
 void Dot::handleEvent(SDL_Event& e)
@@ -70,11 +72,15 @@ void Dot::move()
 		//Check collision with left side of platform - what to do?
 		int sz = lBlocks->size();
 		bool collides_x = false;
+		SDL_Rect r;
+		int type;
+		BlockBox* b;
 		for (int i = 0; i < sz; i++) {
-			SDL_Rect r = lBlocks->at(i)->getRect();
+			b = lBlocks->at(i);
+			r = b->getRect();
 			if (check_collision(r))
 			{
-				int type = lBlocks->at(i)->getType();
+				type = b->getType();
 				if (type == BlockBox::BL_GROUND)
 				{
 					mPosX -= (int)mVelX;
@@ -83,6 +89,7 @@ void Dot::move()
 				}
 				else if (type == BlockBox::BL_OBSTACLE)
 				{
+					Mix_PlayChannel(-1, lSounds->at(Sounds::SE_DEATH), 0);
 					State = States::DOT_DIE;
 					break;
 				}
@@ -117,10 +124,10 @@ void Dot::move()
 		mPosY += (int)mVelY;
 		int exits = 0;//checking if dot exits level
 		for (int i = 0; i < sz; i++) {
-			BlockBox* b = lBlocks->at(i);
-			SDL_Rect r = b->getRect();
+			b = lBlocks->at(i);
+			r = b->getRect();
 			if (check_collision(r)) {
-				int type = b->getType();
+				type = b->getType();
 				if (type == BlockBox::BL_GROUND)
 				{
 					collides_y = true;
@@ -268,5 +275,6 @@ std::string Dot::getCoinCountStr()
 	std::stringstream sstm;
 	sstm << mCoins;
 	std::string sCoins = sstm.str();
+	sstm.clear();
 	return sCoins;
 }

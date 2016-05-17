@@ -36,6 +36,9 @@ GMenu::GMenu(SDL_Renderer * gR, SDL_Rect rendWin, SDL_Rect mrect,  char* fPath, 
 
 GMenu::~GMenu()
 {
+	PointTexture = NULL;
+	bgTexture = NULL;
+
 }
 
 void GMenu::setInfos(std::vector<GMenuInfo> infs)
@@ -43,7 +46,7 @@ void GMenu::setInfos(std::vector<GMenuInfo> infs)
 	Infos = infs;
 }
 
-void GMenu::addOption(SDL_Keycode key, void (* func)())
+void GMenu::addHotKeyOption(SDL_Keycode key, void (* func)())
 {
 	aditionalOpt a_opt;
 	a_opt.key = key;
@@ -72,6 +75,7 @@ void GMenu::LoadTextures()
 		TTF_SizeText(tF, Items[i].Text().c_str(), &a, &b);
 		while (a > MenuRect.w - 2 * PointRect.w) {
 			fSize--;
+			TTF_CloseFont(tF);
 			tF = TTF_OpenFont(FontPath, fSize);
 			TTF_SizeText(tF, Items[i].Text().c_str(), &a, &b);
 		}
@@ -101,7 +105,8 @@ void GMenu::LoadTextures()
 		if (ItemRects[i].x - PointRect.w - 10 < PointRect.x)
 			PointRect.x = ItemRects[i].x - PointRect.w - 10;
 	}
-	tF = TTF_OpenFont("Resources/Fonts/Game_continue.ttf", fSize/2);
+	TTF_CloseFont(tF);
+	tF = TTF_OpenFont(GAME_INFO_FONT_PATH, 2*fSize/3);
 
 	InfoContainerRect = { renderWindow.w , renderWindow.h,0,0 }; 
 	int step = 0;
@@ -128,6 +133,7 @@ void GMenu::LoadTextures()
 		}
 		InfoContainerRect.h += InfoRects[i].h;
 	}
+	TTF_CloseFont(tF);
 	InfoContainerRect.w += 2*pad;
 	InfoContainerRect.h += 2*pad;
 }
@@ -144,8 +150,6 @@ void GMenu::Show()
 	LoadTextures();
 	while (!quit)
 	{
-		SDL_SetRenderDrawColor(gRenderer, 255, 255, 255, 0);
-		SDL_RenderClear(gRenderer);
 		//Handle events on queue
 		while (SDL_PollEvent(&e) != 0)
 		{
@@ -188,6 +192,9 @@ void GMenu::Show()
 				}
 			}
 		}
+		SDL_SetRenderDrawColor(gRenderer, 255, 255, 255, 0);
+		SDL_RenderClear(gRenderer);
+
 		if (bgTexture != NULL) {
 			SDL_Rect rc = { 0,0,0,0 };
 			bgTexture->render(gRenderer, &rc);
@@ -222,6 +229,7 @@ GMenuOption::GMenuOption(std::string text, bool avail, SDL_Color col)
 GMenuOption::~GMenuOption()
 {
 	itemTexture.free();
+	itemFont = NULL;
 }
 
 void GMenuOption::setFont(TTF_Font * tf)
@@ -269,6 +277,7 @@ void GMenuInfo::createTexture(SDL_Renderer* gRenderer) {
 GMenuInfo::~GMenuInfo()
 {
 	infoTexture.free();
+	infoFont = NULL;
 }
 
 void GMenuInfo::setFont(TTF_Font * tf)

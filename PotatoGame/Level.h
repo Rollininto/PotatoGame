@@ -4,12 +4,14 @@
 #include "BlockBox.h"
 #include "Dot.h"
 #include "GMenu.h"
+#include "DataStorage.h"
 #include <fstream>
 #include <sstream>
 #include <vector>
 
 class Level
-{
+{	
+	int lvlId;
 	int Width;
 	int Height;
 	SDL_Renderer* gRenderer;
@@ -41,16 +43,18 @@ class Level
 public:
 	Level(SDL_Renderer* gR, int w, int h);
 	~Level();
-	bool Load(int lvlNum, std::string PotatoStyle);
+	bool Load(int lvlNum, Character userPotato);
 	void Draw();
 	void DrawBack();
 	void UpdateCamera();
 	void UpdateDot();
+	void UpdateDoor();
 	void handleDotEvent(SDL_Event& e);
 	
-
+	sLevelData lLevelData;
 	static struct Result
 	{
+		int lvlId;
 		bool rLost;
 		Uint32 rTime;
 		int rGotCoins;

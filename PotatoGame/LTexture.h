@@ -8,6 +8,7 @@
 #include <Windows.h>
 #include <WinBase.h>
 #include <sstream>
+#include "GameConstants.h"
 
 
 //LTexture class
