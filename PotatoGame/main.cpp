@@ -46,8 +46,12 @@ LTexture gMainMenuBg;
 LTexture gResMenuBgOk;
 LTexture gResMenuBgFail;
 
-//The music that will be played in main menu
-Mix_Music *gMainMusic = NULL;
+
+Mix_Music *gMainMusic = NULL;//The music that will be played in main menu
+Mix_Chunk* gSFXSample = NULL;//Sample sound for SFX volume preview
+//volume
+double MusicVolume = 0.6;
+double SFXVolume = 0.6;
 
 sUserData gUserData;
 
@@ -93,14 +97,12 @@ int main(int argc, char* args[])
 			SDL_SetWindowBordered(gWindow, SDL_FALSE);
 			gFullScreen = false;
 			GetAvailableGameData();
-			//SDL_SetWindowFullscreen(gWindow, SDL_WINDOW_FULLSCREEN_DESKTOP);			
+
 			//Main loop flag
 			bool quit = false;
 			int menuOptionSel = -1;
 
-			//Event handler
-			//SDL_Event e;
-
+					
 			//While application is running
 			while (!quit)
 			{	
@@ -177,12 +179,7 @@ int main(int argc, char* args[])
 				}
 				else if (menuOptionSel == MainMenu::O_EXIT) {
 					quit = true;
-				}
-				/*//Clear screen
-				SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
-				SDL_RenderClear(gRenderer);
-				//Update screen
-				SDL_RenderPresent(gRenderer);*/
+				}				
 			}
 		}
 	
@@ -291,6 +288,18 @@ bool loadMedia()
 		ss << "Failed to load /menu.wav! SDL_mixer Error: " << Mix_GetError() << "\n";
 		OutputDebugString(ss.str().c_str());
 		success = false; 
+	}
+	else {
+		Mix_VolumeMusic((int)(MusicVolume*MIX_MAX_VOLUME));
+		Mix_Volume(-1, (int)(SFXVolume*MIX_MAX_VOLUME));
+	}
+
+	gSFXSample = Mix_LoadWAV("Resources/Sounds/jump.wav");
+	if (gSFXSample == NULL) {
+		std::stringstream ss;
+		ss << "Failed to load /jump.wav! SDL_mixer Error: " << Mix_GetError() << "\n";
+		OutputDebugString(ss.str().c_str());
+		success = false;
 	}
 	return success;
 }
@@ -698,13 +707,13 @@ void PlayLevel(int lvlId) {
 					//User requests quit
 					if (e.type == SDL_QUIT)
 					{
-						currLevel.exit();
+						currLevel.ExitPrompt();
 						break;
 					}
 					else if (e.type == SDL_KEYDOWN) {
 						if (e.key.keysym.sym == SDLK_ESCAPE)
 						{
-							currLevel.pause();
+							currLevel.PauseMenu();
 							break;
 						}
 						else if (e.key.keysym.sym == SDLK_F11) {
@@ -827,8 +836,154 @@ void UpdateData(int lId, Level* currLevel)
 
 void ShowSettings()
 {
-	//settings window
+	enum SettOptions {
+		SO_FIRST,
+		SO_MUSIC,
+		SO_SFX,
+		SO_LAST
+	};
+	int selOpt = SettOptions::SO_MUSIC;
 
+	bool quit = false;
+	SDL_Event e;
+
+	int VolumeSteps = 10;
+	int MusicVolumeStep = (int)(VolumeSteps*MusicVolume);
+	int SFXVolumeStep = (int)(VolumeSteps*SFXVolume);
+
+	LTexture BgTexture;
+	BgTexture.loadFromFile("Resources/Common/cust_back.png", gRenderer, SCREEN_WIDTH, SCREEN_HEIGHT);
+	SDL_Rect BgDest = { 0,0,0,0 };
+
+	LTexture MusicVolumePrompt;
+	TTF_Font* tf = TTF_OpenFont(GAME_MENU_FONT_PATH, 40);
+	MusicVolumePrompt.loadFromRenderedText("Music volume", { 0,0,0 }, gRenderer, tf);
+	SDL_Rect MusicVolumePromptDest = {
+		(SCREEN_WIDTH - MusicVolumePrompt.getWidth()) / 2,
+		(int)(0.4*SCREEN_HEIGHT) - MusicVolumePrompt.getHeight(),
+		MusicVolumePrompt.getWidth(),
+		MusicVolumePrompt.getHeight()
+	};
+	SDL_Rect MusicVolumeControlDest{
+		SCREEN_WIDTH/3,
+		MusicVolumePromptDest.y + MusicVolumePromptDest.h,
+		SCREEN_WIDTH/3,
+		(int)(0.1*SCREEN_HEIGHT)
+	};
+	SDL_Rect MusicVolumeControlPartDest = {
+		MusicVolumeControlDest.x,
+		MusicVolumeControlDest.y + (int)(0.2*MusicVolumeControlDest.h),
+		(int)(MusicVolumeControlDest.w/VolumeSteps*0.6),
+		(int)(0.9*MusicVolumeControlDest.h)
+	};
+	LTexture SFXVolumePrompt;//sound effects
+	SFXVolumePrompt.loadFromRenderedText("Sound effects volume", { 0,0,0 }, gRenderer, tf);
+	SDL_Rect SFXVolumePromptDest = {
+		(SCREEN_WIDTH - SFXVolumePrompt.getWidth()) / 2,
+		MusicVolumeControlDest.y + (int)(1.5*MusicVolumeControlDest.h),
+		SFXVolumePrompt.getWidth(),
+		SFXVolumePrompt.getHeight()
+	};
+	SDL_Rect SFXVolumeControlDest{
+		SCREEN_WIDTH/3,
+		SFXVolumePromptDest.y + SFXVolumePromptDest.h,
+		SCREEN_WIDTH/3,
+		(int)(0.1*SCREEN_HEIGHT)
+	};
+	SDL_Rect SFXVolumeControlPartDest = {
+		SFXVolumeControlDest.x,
+		SFXVolumeControlDest.y + (int)(0.2*SFXVolumeControlDest.h),
+		(int)(SFXVolumeControlDest.w / VolumeSteps*0.6),
+		(int)(0.9*SFXVolumeControlDest.h)
+	};
+
+	SDL_Rect gMenuPointerDest = {
+		0,
+		0,
+		MusicVolumePromptDest.h,
+		MusicVolumePromptDest.h
+	};
+	while(!quit) {
+		SDL_SetRenderDrawColor(gRenderer, 255, 255, 255, 0);
+		SDL_RenderClear(gRenderer);
+		while (SDL_PollEvent(&e) != 0)
+		{
+			if (e.type == SDL_KEYDOWN) {
+				SDL_Keycode s = e.key.keysym.sym;
+				switch (s)
+				{
+				case SDLK_ESCAPE:
+					quit = true;
+					break;
+				case SDLK_RETURN:
+					break;
+				case SDLK_LEFT:
+					if (selOpt == SettOptions::SO_MUSIC && MusicVolumeStep>0) {
+						MusicVolumeStep--;
+						MusicVolume = (double)MusicVolumeStep / VolumeSteps;
+						Mix_VolumeMusic((int)(MusicVolume*MIX_MAX_VOLUME));
+						
+					}else if (selOpt == SettOptions::SO_SFX && SFXVolumeStep>0) {
+						SFXVolumeStep--;
+						SFXVolume = (double)SFXVolumeStep / VolumeSteps;
+						Mix_Volume(-1, (int)(SFXVolume*MIX_MAX_VOLUME));
+						Mix_PlayChannel(-1, gSFXSample, 0);
+					}
+					break;
+				case SDLK_RIGHT:
+					if (selOpt == SettOptions::SO_MUSIC && MusicVolumeStep<VolumeSteps) {
+						MusicVolumeStep++;
+						MusicVolume = (double)MusicVolumeStep / VolumeSteps;
+						Mix_VolumeMusic((int)(MusicVolume*MIX_MAX_VOLUME));
+					}
+					else if (selOpt == SettOptions::SO_SFX && SFXVolumeStep<VolumeSteps) {
+						SFXVolumeStep++;
+						SFXVolume = (double)SFXVolumeStep / VolumeSteps;
+						Mix_Volume(-1, (int)(SFXVolume*MIX_MAX_VOLUME));
+						Mix_PlayChannel(-1, gSFXSample, 0);
+					}
+					break;
+				case SDLK_UP:
+					if (selOpt > SettOptions::SO_FIRST + 1) {
+						selOpt--;
+					}
+					break;
+				case SDLK_DOWN:
+					if (selOpt < SettOptions::SO_LAST - 1) {
+						selOpt++;
+					}
+					break;
+				default:
+					break;
+				}
+			}
+		}
+		if (selOpt == SettOptions::SO_MUSIC) {
+			gMenuPointerDest.x = MusicVolumePromptDest.x - gMenuPointerDest.w-20;
+			gMenuPointerDest.y = MusicVolumePromptDest.y;
+		}
+		else if (selOpt == SettOptions::SO_SFX) {
+			gMenuPointerDest.x = SFXVolumePromptDest.x - gMenuPointerDest.w-20;
+			gMenuPointerDest.y = SFXVolumePromptDest.y;
+		}
+
+		BgTexture.render(gRenderer, &BgDest);
+		gMenuPointer.render(gRenderer, &gMenuPointerDest);
+		MusicVolumePrompt.render(gRenderer, &MusicVolumePromptDest);
+		SFXVolumePrompt.render(gRenderer, &SFXVolumePromptDest);
+		SDL_SetRenderDrawColor(gRenderer, 0x00, 0xFF, 0x00, 0x00);
+		MusicVolumeControlPartDest.x = MusicVolumeControlDest.x;
+		for (int i = 0; i < MusicVolumeStep; i++) {
+			SDL_RenderFillRect(gRenderer, &MusicVolumeControlPartDest);
+			MusicVolumeControlPartDest.x += MusicVolumeControlDest.w/VolumeSteps;
+		}
+		SFXVolumeControlPartDest.x = SFXVolumeControlDest.x;
+		for (int i = 0; i < SFXVolumeStep; i++) {
+			SDL_RenderFillRect(gRenderer, &SFXVolumeControlPartDest);
+			SFXVolumeControlPartDest.x += SFXVolumeControlDest.w / VolumeSteps;
+		}
+		SDL_RenderPresent(gRenderer);
+	}
 
 }
 

@@ -33,6 +33,9 @@
     <ClCompile Include="GMenu.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="DataStorage.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Level.h">
@@ -54,6 +57,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="DataStorage.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="GameConstants.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

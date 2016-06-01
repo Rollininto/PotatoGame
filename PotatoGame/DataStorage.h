@@ -14,7 +14,6 @@ struct Character {
 };
 struct sUserData {
 	std::string login;
-	//identyfikator postaci???
 	int coins;
 	int persId;
 	int levelsPassed;

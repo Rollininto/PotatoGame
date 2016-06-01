@@ -220,7 +220,7 @@ bool Level::Load(int lvlNum, Character userPotato)
 
 		is_running = true;
 		Level::T_ANIMATE = 0;
-		timerCoinRot = SDL_AddTimer(250, CoinAnimate, NULL);
+		timerCoinRot = SDL_AddTimer(150, CoinAnimate, NULL);
 
 		//Play the music 
 		Mix_PlayMusic(lLevelMusic, -1);
@@ -365,7 +365,7 @@ bool Level::isRunning()
 	return is_running;
 }
 
-void Level::exit()
+void Level::ExitPrompt()
 {
 	StopTimer();
 	LTexture bgFromLevel;
@@ -407,7 +407,7 @@ void Level::exit()
 	}	
 }
 
-void Level::pause()
+void Level::PauseMenu()
 {
 	StopTimer();
 	LTexture bgFromLevel;

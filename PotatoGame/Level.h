@@ -68,8 +68,8 @@ public:
 	
 	bool isLost();
 	bool isRunning();	
-	void exit();
-	void pause();
+	void ExitPrompt();
+	void PauseMenu();
 	Result GetResult();
 	void StartTimer();
 	void ResumeTimer();
