@@ -1,6 +1,19 @@
 <Usres>
     <overlord Coins="0" PersId="1" LevelsPassed="0"/>
-    <Rollin Coins="0" PersId="0" LevelsPassed="0"/>
-    <Collin Coins="0" PersId="2" LevelsPassed="0">
+    <Collin Coins="3" PersId="11" LevelsPassed="2">
+        <LevelRes Id="1" BestBonusCoins="3" BestTime="19758"/>
+        <StoreCharacter Id="11"/>
+        <LevelRes Id="2" BestBonusCoins="3" BestTime="15796"/>
     </Collin>
+    <Rollin Coins="5" PersId="13" LevelsPassed="6">
+        <LevelRes Id="1" BestBonusCoins="3" BestTime="20318"/>
+        <LevelRes Id="2" BestBonusCoins="3" BestTime="15660"/>
+        <LevelRes Id="3" BestBonusCoins="3" BestTime="70381"/>
+        <LevelRes Id="4" BestBonusCoins="3" BestTime="39930"/>
+        <LevelRes Id="5" BestBonusCoins="3" BestTime="7373"/>
+        <LevelRes Id="6" BestBonusCoins="3" BestTime="33221"/>
+        <StoreCharacter Id="13"/>
+        <StoreCharacter Id="15"/>
+        <StoreCharacter Id="11"/>
+    </Rollin>
 </Usres>

@@ -45,25 +45,31 @@ LTexture gMenuPointer;
 LTexture gMainMenuBg;
 LTexture gResMenuBgOk;
 LTexture gResMenuBgFail;
+LTexture gSettingsBg;
+LTexture gCoinTexture;
+LTexture gSelectorTexture;
+LTexture gSelectedPointer;
+LTexture gBadSelectorTexture;
 
 
 Mix_Music *gMainMusic = NULL;//The music that will be played in main menu
 Mix_Chunk* gSFXSample = NULL;//Sample sound for SFX volume preview
+Mix_Chunk* gBadChoiseSound = NULL;//Bad character choise sound
+Mix_Chunk* gRetrieveCoinsSound = NULL;//Retrieving coins sound
 //volume
 double MusicVolume = 0.6;
 double SFXVolume = 0.6;
 
 sUserData gUserData;
+std::vector<sLevelData>AvailableLevels;
 
 int gAvailArcLevelsCnt;
 int gOverCampLevelsCnt;
-bool gFullScreen;
 
 bool init();
 bool loadMedia();
 void GetAvailableGameData();
 void RenderResults(Level* lvl);
-void ShowCampaignMenu();
 void ShowLogInForm();
 void ChangeUser(std::string log);
 void PlayLevel(int lvlId = -1);
@@ -93,9 +99,12 @@ int main(int argc, char* args[])
 		else 
 		{		
 			//if we are dubugging with breakpoints it would be impossible to switch to VS from fullscreen
-			//SDL_SetWindowFullscreen(gWindow, SDL_WINDOW_FULLSCREEN);
-			SDL_SetWindowBordered(gWindow, SDL_FALSE);
-			gFullScreen = false;
+			if (IsDebuggerPresent()) {
+				SDL_SetWindowBordered(gWindow, SDL_FALSE);
+			}
+			else {
+				SDL_SetWindowFullscreen(gWindow, SDL_WINDOW_FULLSCREEN);
+			}			
 			GetAvailableGameData();
 
 			//Main loop flag
@@ -113,12 +122,9 @@ int main(int argc, char* args[])
 							
 				GMenu MainMenu(gRenderer,
 					{0,0,SCREEN_WIDTH,SCREEN_HEIGHT},
-					//{ "CAMPAIGN","ARCADE","OPTIONS","EXIT" },
-					//{ 1, 1, 1, 1 },
 					{0, SCREEN_HEIGHT/2, SCREEN_WIDTH, SCREEN_HEIGHT/2},
 					"Resources/Fonts/Mf_July_Sky.ttf",
 					40,
-					//{0,0,0},
 					&gMenuPointer, 
 					&gMainMenuBg,
 					{
@@ -144,13 +150,11 @@ int main(int argc, char* args[])
 				}
 				else if (menuOptionSel == MainMenu::O_CAMPAIGN) {
 					std::vector<GMenuOption> campOptions;
-					for (int i = 1; i <= gOverCampLevelsCnt;i++) {
-						std::ostringstream lname("");
-						lname << "Level " << i;
-						if(i<=gUserData.levelsPassed+1)
-							campOptions.push_back(GMenuOption(lname.str(), true, { 0,0,0 }) );
+					for (int i = 0; i < gOverCampLevelsCnt;i++) {						
+						if(i<=gUserData.levelsPassed)
+							campOptions.push_back(GMenuOption(AvailableLevels[i].title, true, { 0,0,0 }) );
 						else
-							campOptions.push_back(GMenuOption(lname.str(), false, { 0,0,0 }));
+							campOptions.push_back(GMenuOption(AvailableLevels[i].title, false, { 0,0,0 }));
 					}
 					campOptions.push_back(GMenuOption("EXIT", true, { 0,0,0 }));
 					GMenu CampaignMenu(gRenderer,
@@ -165,7 +169,7 @@ int main(int argc, char* args[])
 					CampaignMenu.Show();
 					int selOpt = CampaignMenu.getSelectedOption();
 					if (selOpt >= 0 && selOpt < gOverCampLevelsCnt) {
-						PlayLevel(selOpt + 1);
+						PlayLevel(selOpt);
 					}
 					else if(selOpt!=gOverCampLevelsCnt) {
 						OutputDebugString("Campaign menu: bad option!");
@@ -257,7 +261,6 @@ bool init()
 
 bool loadMedia()
 {
-	//Loading success flag
 	bool success = true;
 	if (!gMenuPointer.loadFromFile("Resources/Common/pointer.png", gRenderer))
 	{
@@ -277,6 +280,31 @@ bool loadMedia()
 	if (!gResMenuBgFail.loadFromFile("Resources/Common/loose.png", gRenderer))
 	{
 		OutputDebugString("Failed to load fail result menu background texture!\n");
+		success = false;
+	}
+	if (!gSettingsBg.loadFromFile("Resources/Common/cust_back.png", gRenderer))
+	{
+		OutputDebugString("Failed to load settings menu background texture!\n");
+		success = false;
+	}
+	if (!gCoinTexture.loadFromFile("Resources/Common/coin.png", gRenderer)) 
+	{
+		OutputDebugString("Failed to load coin texture!\n");
+		success = false;
+	}
+	if (!gSelectorTexture.loadFromFile("Resources/Common/cust_selector.png", gRenderer))
+	{
+		OutputDebugString("Failed to load customization selector texture!\n");
+		success = false;
+	}
+	if (!gSelectedPointer.loadFromFile("Resources/Common/cust_selected.png", gRenderer))
+	{
+		OutputDebugString("Failed to load selected pointer texture!\n");
+		success = false;
+	}
+	if (!gBadSelectorTexture.loadFromFile("Resources/Common/cust_bad_selector.png", gRenderer))
+	{
+		OutputDebugString("Failed to load bad selector texture!\n");
 		success = false;
 	}
 	//load game main screen textures and lables(fonts,strings etc.)
@@ -301,13 +329,27 @@ bool loadMedia()
 		OutputDebugString(ss.str().c_str());
 		success = false;
 	}
+	gBadChoiseSound = Mix_LoadWAV("Resources/Sounds/bad_sound.wav");
+	if (gBadChoiseSound == NULL) {
+		std::stringstream ss;
+		ss << "Failed to load /bad_sound.wav! SDL_mixer Error: " << Mix_GetError() << "\n";
+		OutputDebugString(ss.str().c_str());
+		success = false;
+	}
+	gRetrieveCoinsSound = Mix_LoadWAV("Resources/Sounds/retr_coins.wav");
+	if (gRetrieveCoinsSound == NULL) {
+		std::stringstream ss;
+		ss << "Failed to load /retr_coins.wav! SDL_mixer Error: " << Mix_GetError() << "\n";
+		OutputDebugString(ss.str().c_str());
+		success = false;
+	}
 	return success;
 }
 
 void GetAvailableGameData() {
-	//std::vector<sLevelData> lvls = DataStorage::
-	gAvailArcLevelsCnt = 3;
-	gOverCampLevelsCnt = 5;
+	gAvailArcLevelsCnt = DataStorage::getOverLvlCnt();
+	gOverCampLevelsCnt = gAvailArcLevelsCnt;
+	AvailableLevels = DataStorage::getAvailableLevelsData();
 }
 
 void RenderResults(Level* lvl) {
@@ -320,8 +362,7 @@ void RenderResults(Level* lvl) {
 	LTexture ret;
 	gMenuBG.createBlank(gRenderer, SCREEN_WIDTH, SCREEN_HEIGHT,SDL_TEXTUREACCESS_TARGET);
 	TTF_Font* tF;
-
-	//result textures
+		//result textures
 	if (r.rLost) {
 		tF = TTF_OpenFont(GAME_LOST_FONT_PATH, 70);
 		rsResultTexture.loadFromRenderedText("YOU LOST...", {255,0,0},gRenderer,tF);
@@ -355,7 +396,7 @@ void RenderResults(Level* lvl) {
 	bestResPrompt.loadFromRenderedText("Best user result:", {0,0,0}, gRenderer,tF);
 	std::stringstream format;
 	format.str("");
-	format << "Bonus coins: " << ulres.userBestBonusCoins;//??
+	format << "Bonus coins: " << ulres.userBestBonusCoins;
 	bestUserCoins.loadFromRenderedText(format.str(), { 0,0,0 }, gRenderer);
 	format.str("");
 	format << "Time: ";
@@ -442,7 +483,6 @@ void RenderResults(Level* lvl) {
 	
 
 	gMenuBG.setAsRenderTarget(gRenderer);
-	//Clear screen
 	SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
 	SDL_RenderClear(gRenderer);
 	if (r.rLost) {
@@ -468,15 +508,8 @@ void RenderResults(Level* lvl) {
 	SDL_SetRenderTarget(gRenderer, NULL);
 }
 
-void ShowCampaignMenu()
-{
-	//campaign menu
-	//probably should do map-like
-}
-
 void ShowLogInForm()
 {
-	//memory leak???
 	SDL_Surface* saveSurface = NULL;
 	SDL_Surface* surf = SDL_GetWindowSurface(gWindow);
 	unsigned char * pixels = new (std::nothrow) unsigned char[surf->w * surf->h * surf->format->BytesPerPixel];
@@ -567,18 +600,12 @@ void ShowLogInForm()
 						}
 						break;
 					case SDLK_RETURN:
-						if (login.length() == 0) {
-							//empty login not allowed or log in as Guest
-						}
-						else if (login.length() > 16) {
-							//too long login
-						}
-						else {
-							if (DataStorage::userExsists(login)) {
+						if (login.length() > 0 && login.length() < 17) {
+							if (DataStorage::userExsists(login) && DataStorage::Err==0) {
 								ChangeUser(login);
 								quit = true; 
 							}
-							else {
+							else if(DataStorage::Err == 0){
 								TTF_Font*tf_ask = TTF_OpenFont(GAME_OUTPUT_FONT_PATH, 35);
 								gAskCreateNotifyTexture.loadFromRenderedText("User \"" + login + "\" doesn't exsit!", { 0,0,0 }, gRenderer, tf_ask);
 								gAskCreateTexture.loadFromRenderedText("Create \"" + login + "\"?", { 0,0,0 }, gRenderer, tf_ask);
@@ -604,10 +631,7 @@ void ShowLogInForm()
 								ask_create = true;
 							}
 						}
-						break;
-					case SDLK_SPACE:
-						//spaces not allowed
-						break;
+						break;					
 					default:
 						break;
 					}
@@ -629,8 +653,12 @@ void ShowLogInForm()
 			}
 			else if (e.type == SDL_TEXTINPUT) {
 				if (!ask_create) {
-					login += e.text.text;
-					updateText = true;
+					char c = e.text.text[0];
+					if (std::isalnum(c))
+					{
+						login += c;
+						updateText = true;
+					}					
 				}
 			}
 		}
@@ -678,7 +706,7 @@ void PlayLevel(int lvlId) {
 	srand(time(NULL));	
 	int arcLevInd;
 	if (lvlId==-1){
-		arcLevInd = 1 + rand() % (gAvailArcLevelsCnt);
+		arcLevInd =  rand() % (gAvailArcLevelsCnt);
 	}
 	else {
 		arcLevInd = lvlId;
@@ -692,7 +720,7 @@ void PlayLevel(int lvlId) {
 		//create level
 		Level currLevel = Level(gRenderer, SCREEN_WIDTH, SCREEN_HEIGHT);		
 		//load level 
-		if (!currLevel.Load(arcLevInd, DataStorage::getCharById(gUserData.persId))) {
+		if (!currLevel.Load(AvailableLevels[arcLevInd], DataStorage::getCharById(gUserData.persId))) {
 			OutputDebugString("Failed to load level!\n");
 			Level::PlayAgain = false;
 		}
@@ -715,17 +743,7 @@ void PlayLevel(int lvlId) {
 						{
 							currLevel.PauseMenu();
 							break;
-						}
-						else if (e.key.keysym.sym == SDLK_F11) {
-							if (gFullScreen) {
-								//OutputDebugString("Fullscreen ON");
-								SDL_SetWindowFullscreen(gWindow, 0);
-							}else {
-								//OutputDebugString("Fullscreen OFF");
-								SDL_SetWindowFullscreen(gWindow, SDL_WINDOW_FULLSCREEN);								
-							}			
-							gFullScreen = !gFullScreen;
-						}
+						}						
 					}
 					//Handle input for the dot
 					currLevel.handleDotEvent(e);
@@ -751,11 +769,11 @@ void PlayLevel(int lvlId) {
 				if (!cResult.rLost){
 					UpdateData(lvlId, &currLevel);
 				}
-				if (lvlId <= gUserData.levelsPassed && lvlId != gOverCampLevelsCnt) {
+				if (lvlId < gUserData.levelsPassed && lvlId < gOverCampLevelsCnt-1) {
 					resOpt[1] = GMenuOption("NEXT", true, { 0,0,0 });
 				}
-				
-				RenderResults(&currLevel);//render to texture
+				//render to texture to speed up further rendering
+				RenderResults(&currLevel);
 				GMenu ResultMenu(gRenderer,
 					{0,0,SCREEN_WIDTH,SCREEN_HEIGHT},
 					{ SCREEN_WIDTH / 2, 3 * SCREEN_HEIGHT / 4, SCREEN_WIDTH / 2, SCREEN_HEIGHT / 4 },
@@ -800,7 +818,7 @@ void UpdateData(int lId, Level* currLevel)
 	Level::Result res = currLevel->GetResult();
 	bool updres = false;
 
-	if (lId > gUserData.levelsPassed) {
+	if (lId >= gUserData.levelsPassed) {
 		gUserData.levelsPassed++;
 		if (gUserData.login != "Guest") {
 			gUserData.UpToDate = false;
@@ -851,9 +869,7 @@ void ShowSettings()
 	int MusicVolumeStep = (int)(VolumeSteps*MusicVolume);
 	int SFXVolumeStep = (int)(VolumeSteps*SFXVolume);
 
-	LTexture BgTexture;
-	BgTexture.loadFromFile("Resources/Common/cust_back.png", gRenderer, SCREEN_WIDTH, SCREEN_HEIGHT);
-	SDL_Rect BgDest = { 0,0,0,0 };
+	SDL_Rect BgDest = { 0,0,SCREEN_WIDTH,SCREEN_HEIGHT };
 
 	LTexture MusicVolumePrompt;
 	TTF_Font* tf = TTF_OpenFont(GAME_MENU_FONT_PATH, 40);
@@ -967,12 +983,13 @@ void ShowSettings()
 			gMenuPointerDest.y = SFXVolumePromptDest.y;
 		}
 
-		BgTexture.render(gRenderer, &BgDest);
+		gSettingsBg.render(gRenderer, &BgDest);
 		gMenuPointer.render(gRenderer, &gMenuPointerDest);
 		MusicVolumePrompt.render(gRenderer, &MusicVolumePromptDest);
 		SFXVolumePrompt.render(gRenderer, &SFXVolumePromptDest);
 		SDL_SetRenderDrawColor(gRenderer, 0x00, 0xFF, 0x00, 0x00);
 		MusicVolumeControlPartDest.x = MusicVolumeControlDest.x;
+		SDL_SetRenderDrawColor(gRenderer, 0x00, 0xff, 0x00, 0xFF);
 		for (int i = 0; i < MusicVolumeStep; i++) {
 			SDL_RenderFillRect(gRenderer, &MusicVolumeControlPartDest);
 			MusicVolumeControlPartDest.x += MusicVolumeControlDest.w/VolumeSteps;
@@ -999,24 +1016,35 @@ void ShowCustomize()
 	};
 	int selOpt = CustOptions::CO_CHAR;
 	const int SAMPLE_SIZE = 80;
-	int selChar = 0;
+	int selCharId = 0;
+	int selector=0;
+	bool bad_choise = false;
 	bool quit = false;
 	SDL_Event e;
 
-	LTexture BgTexture;
-	BgTexture.loadFromFile("Resources/Common/cust_back.png", gRenderer, SCREEN_WIDTH, SCREEN_HEIGHT);
-	SDL_Rect BgDest = { 0,0,0,0 };
+	LTexture UserCoinsTexture;
+	SDL_Rect BgDest = { 0,0,SCREEN_WIDTH,SCREEN_HEIGHT };
 	std::vector <Character> Chars = DataStorage::getChars();
+	std::vector <StoreCharacter> StoreChars = DataStorage::getShopChars();
+
 	LTexture CharLabelTexture,StoreLabelTexture,SaveLabelTexture,CancelLabelTexture;	
 	CharLabelTexture.loadFromRenderedText("Character", { 0,0,0 }, gRenderer);
-	CharLabelTexture.setColor(0x00, 0xFF, 0x00);
-	SDL_Rect CharLabelDest = { 20, 20, CharLabelTexture.getWidth(), CharLabelTexture.getHeight() };
+	SDL_Rect CharLabelDest = { 50, 20, CharLabelTexture.getWidth(), CharLabelTexture.getHeight() };
+	
+	SDL_Rect SelectedCharDest = {
+		CharLabelDest.x,
+		CharLabelDest.y + CharLabelDest.h + 20 + (int)(0.6*SAMPLE_SIZE),
+		(int)(0.4*SAMPLE_SIZE),
+		(int)(0.4*SAMPLE_SIZE)
+	};
+	
 	SDL_Rect CharsForm = {
 		CharLabelDest.x,
 		CharLabelDest.y + CharLabelDest.h + 20,
-		SCREEN_WIDTH - 2*CharLabelDest.x,
-		SCREEN_HEIGHT/2
-	};
+		SCREEN_WIDTH - 2 * CharLabelDest.x,
+		SCREEN_HEIGHT / 2
+	};	
+	
 	int charsCnt = Chars.size();
 	std::vector<LTexture> CharTextures(charsCnt, LTexture());
 	std::vector<SDL_Rect> CharDests(charsCnt);
@@ -1024,34 +1052,94 @@ void ShowCustomize()
 		CharTextures[i].loadFromFile(Chars[i].path, gRenderer, SAMPLE_SIZE, SAMPLE_SIZE);
 		CharDests[i] = { CharsForm.x + (int)(i*1.5*SAMPLE_SIZE), CharsForm.y, SAMPLE_SIZE, SAMPLE_SIZE };
 		if (Chars[i].id == gUserData.persId) {
-			selChar = i;
+			selCharId = Chars[i].id;
+			SelectedCharDest = {
+				CharDests[i].x,
+				CharDests[i].y + (int)(0.6*SAMPLE_SIZE),
+				(int)(0.4*SAMPLE_SIZE),
+				(int)(0.4*SAMPLE_SIZE)
+			};
 		}
 	}
 
 	StoreLabelTexture.loadFromRenderedText("Store", { 0,0,0 }, gRenderer);
-	StoreLabelTexture.setColor(0x00, 0xFF, 0x00);
+	SDL_Rect StoreLabelDest = {
+		CharLabelDest.x,
+		SCREEN_HEIGHT / 2,
+		StoreLabelTexture.getWidth(),
+		StoreLabelTexture.getHeight()
+	}; 
+	SDL_Rect StoreCharsForm = {
+		StoreLabelDest.x,
+		StoreLabelDest.y + StoreLabelDest.h + 20,
+		SCREEN_WIDTH - 2 * StoreLabelDest.x,
+		SCREEN_HEIGHT - (StoreLabelDest.y + StoreLabelDest.h + 20)
+	};
+	LTexture GuestMessage;
+	GuestMessage.loadFromRenderedText("Log in to get access to Store!", { 80,0,0 }, gRenderer);
+	SDL_Rect GuestMessageDest = {
+		StoreCharsForm.x + (StoreCharsForm.w - GuestMessage.getWidth()) / 2,
+		StoreCharsForm.y + (StoreCharsForm.h - GuestMessage.getHeight()) / 2,
+		GuestMessage.getWidth(),
+		GuestMessage.getHeight()
+	};
+		
+	int storeCharsCnt = StoreChars.size();
+	std::vector<LTexture> StoreCharTextures(storeCharsCnt, LTexture());
+	std::vector<LTexture> StoreCharPriceTextures(storeCharsCnt, LTexture());
+	std::vector<SDL_Rect> StoreCharDests(storeCharsCnt);
+	std::vector<SDL_Rect> StoreCharPriceDests(storeCharsCnt);
+	for (int i = 0; i < storeCharsCnt; i++) {
+		StoreCharTextures[i].loadFromFile(StoreChars[i].path, gRenderer, SAMPLE_SIZE, SAMPLE_SIZE);
+		StoreCharDests[i] = { StoreCharsForm.x + (int)(i*1.5*SAMPLE_SIZE), StoreCharsForm.y, SAMPLE_SIZE, SAMPLE_SIZE };
+		if (StoreChars[i].id == gUserData.persId) {
+			selCharId = StoreChars[i].id;
+			SelectedCharDest = {
+				StoreCharDests[i].x,
+				StoreCharDests[i].y + (int)(0.6*SAMPLE_SIZE),
+				(int)(0.4*SAMPLE_SIZE),
+				(int)(0.4*SAMPLE_SIZE)
+			};
+		}
+		std::stringstream ss;
+		ss << StoreChars[i].price;
+		StoreCharPriceTextures[i].loadFromRenderedText(ss.str(), {0,0,0}, gRenderer);
+		StoreCharPriceDests[i] = {
+			StoreCharDests[i].x,
+			StoreCharDests[i].y,
+			(int)(0.2*SAMPLE_SIZE),
+			(int)(0.2*SAMPLE_SIZE)
+		};
+		StoreChars[i].is_bought = DataStorage::IsBoughtChar(gUserData.login, StoreChars[i].id);
+	}
 	SaveLabelTexture.loadFromRenderedText("SAVE", { 0,0,0 }, gRenderer);
-	SaveLabelTexture.setColor(0x00, 0xFF, 0x00);
-	CancelLabelTexture.loadFromRenderedText("CANCEL", { 0,0,0 }, gRenderer);
-	CancelLabelTexture.setColor(0x00, 0xFF, 0x00);
-
-	SDL_Rect StoreLabelDest = { 20, SCREEN_HEIGHT / 2, 0, 0 };
+	CancelLabelTexture.loadFromRenderedText("CANCEL", { 0,0,0 }, gRenderer);	
 	SDL_Rect CancelLabelDest = { 
-		20,
+		CharLabelDest.x,
 		SCREEN_HEIGHT - CancelLabelTexture.getHeight() - 5,
 		CancelLabelTexture.getWidth(),
 		CancelLabelTexture.getHeight()
 	};
 	SDL_Rect SaveLabelDest = {
-		20,
+		CharLabelDest.x,
 		CancelLabelDest.y - CancelLabelDest.h,
 		SaveLabelTexture.getWidth(),
 		SaveLabelTexture.getHeight()
+	};
+
+	StoreCharsForm.h -= (SCREEN_HEIGHT - SaveLabelDest.y);
+
+	SDL_Rect gMenuPointerDest = {
+		CharLabelDest.x - 30,
+		CharLabelDest.y,
+		20,
+		20
 	};
 	while (!quit)
 	{
 		SDL_SetRenderDrawColor(gRenderer, 255, 255, 255, 0);
 		SDL_RenderClear(gRenderer);
+		bad_choise = false;
 		while (SDL_PollEvent(&e) != 0)
 		{
 			if (e.type == SDL_QUIT)
@@ -1067,7 +1155,7 @@ void ShowCustomize()
 					break;
 				case SDLK_RETURN:
 					if (selOpt == CustOptions::CO_SAVE) {
-						gUserData.persId = Chars[selChar].id;
+						gUserData.persId = selCharId;
 						if (gUserData.login != "Guest") {
 							gUserData.UpToDate = false;
 						}
@@ -1076,24 +1164,55 @@ void ShowCustomize()
 					else if (selOpt == CustOptions::CO_CANCEL) {
 						quit = true;
 					}
+					else if (selOpt == CustOptions::CO_CHAR) {
+						selCharId = Chars[selector].id;
+					}
+					else if (selOpt == CustOptions::CO_STORE) {
+						if (gUserData.login != "Guest" && !StoreChars[selector].is_bought) {
+							if (StoreChars[selector].price <= gUserData.coins) {
+								gUserData.coins -= StoreChars[selector].price;
+								StoreChars[selector].is_bought = true;
+								selCharId = StoreChars[selector].id;
+								DataStorage::AddBoughtChar(gUserData.login, selCharId);
+								gUserData.UpToDate = false;
+								Mix_PlayChannel(-1, gRetrieveCoinsSound, 0);
+							}
+							else {
+								bad_choise = true;
+								Mix_PlayChannel(-1, gBadChoiseSound, 0);
+							}
+						}
+						else if (StoreChars[selector].is_bought) {
+							selCharId = StoreChars[selector].id;
+						}
+						if (gUserData.login != "Guest") {
+							DataStorage::updateUserData(gUserData);
+						}
+					}
 					break;
 				case SDLK_LEFT:					
-					if (selOpt == CustOptions::CO_CHAR && selChar > 0) {
-						selChar--;
+					if (selOpt == CustOptions::CO_CHAR && selector > 0) {
+						selector--;
+					}else if (selOpt == CustOptions::CO_STORE && selector > 0) {
+						selector--;
 					}
 					break;
 				case SDLK_RIGHT:
-					if (selOpt == CustOptions::CO_CHAR && selChar < charsCnt - 1) {
-						selChar++;
+					if (selOpt == CustOptions::CO_CHAR && selector < charsCnt - 1) {
+						selector++;
+					}else if(selOpt == CustOptions::CO_STORE && selector < storeCharsCnt - 1) {
+						selector++;
 					}
 					break;
-				case SDLK_UP:
+				case SDLK_UP:					
 					if (selOpt > CustOptions::CO_FIRST + 1) {
+						selector = 0;
 						selOpt--;
 					}
 					break;
 				case SDLK_DOWN:
 					if (selOpt < CustOptions::CO_LAST - 1) {
+						selector = 0;
 						selOpt++;
 					}
 					break;
@@ -1104,49 +1223,104 @@ void ShowCustomize()
 		}
 		
 
-		BgTexture.render(gRenderer, &BgDest);
-		if (selOpt == CustOptions::CO_CHAR) {
-			//SDL_RenderDrawRect(gRenderer, &SaveLabelDest);
-			CharLabelTexture.setBlendMode(SDL_BLENDMODE_MOD);
-		} else {
-			CharLabelTexture.setBlendMode(SDL_BLENDMODE_BLEND);
+		gSettingsBg.render(gRenderer, &BgDest);
+		std::stringstream ss;
+		ss << gUserData.coins;
+		TTF_Font*tf = TTF_OpenFont(GAME_DEFAULT_FONT_PATH, 40);
+		UserCoinsTexture.loadFromRenderedText(ss.str(), {0x33,0x00,0x00},gRenderer,tf);
+		TTF_CloseFont(tf);
+		SDL_Rect UserCoinsDest = {
+			SCREEN_WIDTH - UserCoinsTexture.getWidth()-10,
+			10,
+			UserCoinsTexture.getWidth(),
+			UserCoinsTexture.getHeight()
+		};
+		UserCoinsTexture.render(gRenderer,&UserCoinsDest);
+		UserCoinsDest = {
+			UserCoinsDest.x - UserCoinsDest.h - 10,
+			UserCoinsDest.y,
+			UserCoinsDest.h,
+			UserCoinsDest.h
+		};
+		gCoinTexture.render(gRenderer, &UserCoinsDest);
+		switch (selOpt)
+		{
+		case CustOptions::CO_CHAR:
+			gMenuPointerDest.y = CharLabelDest.y;
+			break;
+		case CustOptions::CO_STORE:
+			gMenuPointerDest.y = StoreLabelDest.y;
+			break;
+		case CustOptions::CO_SAVE:
+			gMenuPointerDest.y = SaveLabelDest.y;
+			break;
+		case CustOptions::CO_CANCEL:
+			gMenuPointerDest.y = CancelLabelDest.y;
+			break;
+		default:
+			break;
 		}
+
+		gMenuPointer.render(gRenderer, &gMenuPointerDest);
+		
 		CharLabelTexture.render(gRenderer, &CharLabelDest);
 		for (int i = 0; i < charsCnt; i++) {
-			if ( i == selChar) {
-				SDL_SetRenderDrawColor(gRenderer, 0x00, 0xFF, 0x00, 0xFF);
-				SDL_RenderDrawRect(gRenderer, &CharDests[i]);
+			if ( selOpt==CustOptions::CO_CHAR && i == selector) {
+				gSelectorTexture.render(gRenderer, &CharDests[i]);								
+			}
+			if (Chars[i].id == selCharId) {
+				SelectedCharDest = {
+					CharDests[i].x,
+					CharDests[i].y + (int)(0.6*SAMPLE_SIZE),
+					(int)(0.4*SAMPLE_SIZE),
+					(int)(0.4*SAMPLE_SIZE)
+				};				
 			}
 			CharTextures[i].render(gRenderer, &CharDests[i]);
 		}
-
-		if (selOpt == CustOptions::CO_STORE) {
-			//SDL_RenderDrawRect(gRenderer, &SaveLabelDest);
-			StoreLabelTexture.setBlendMode(SDL_BLENDMODE_MOD);
-		}
-		else {
-			StoreLabelTexture.setBlendMode(SDL_BLENDMODE_BLEND);
-		}
-		StoreLabelTexture.render(gRenderer, &StoreLabelDest);
 		
-		if (selOpt == CustOptions::CO_SAVE) {
-			//SDL_RenderDrawRect(gRenderer, &SaveLabelDest);
-			SaveLabelTexture.setBlendMode(SDL_BLENDMODE_MOD);
+		StoreLabelTexture.render(gRenderer, &StoreLabelDest);
+		if (gUserData.login == "Guest") {			
+			GuestMessage.render(gRenderer,&GuestMessageDest);
+		}else{
+			for (int i = 0; i < storeCharsCnt; i++) {
+				if (selOpt == CustOptions::CO_STORE && i == selector) {					
+					gSelectorTexture.render(gRenderer, &StoreCharDests[i]);
+				}
+				if (StoreChars[i].id == selCharId) {
+					SelectedCharDest = {
+						StoreCharDests[i].x,
+						StoreCharDests[i].y + (int)(0.6*SAMPLE_SIZE),
+						(int)(0.4*SAMPLE_SIZE),
+						(int)(0.4*SAMPLE_SIZE)
+					};
+				}
+				StoreCharTextures[i].render(gRenderer, &StoreCharDests[i]);
+				if (!StoreChars[i].is_bought) {
+					StoreCharPriceTextures[i].render(gRenderer, &StoreCharPriceDests[i]);
+					gCoinTexture.render(gRenderer, new SDL_Rect({
+						StoreCharPriceDests[i].x + StoreCharPriceDests[i].w,
+						StoreCharPriceDests[i].y,
+						StoreCharPriceDests[i].w,
+						StoreCharPriceDests[i].h
+					}));
+				}				
+			}
+			if (bad_choise) {
+				gBadSelectorTexture.render(gRenderer, &StoreCharDests[selector]);				
+			}
 		}
-		else {
-			SaveLabelTexture.setBlendMode(SDL_BLENDMODE_BLEND);
-		}
-		SaveLabelTexture.render(gRenderer, &SaveLabelDest);
 
-		if (selOpt == CustOptions::CO_CANCEL) {
-			//SDL_RenderDrawRect(gRenderer, &CancelLabelDest);
-			CancelLabelTexture.setBlendMode(SDL_BLENDMODE_MOD);
-		}
-		else {
-			CancelLabelTexture.setBlendMode(SDL_BLENDMODE_BLEND);
-		}
+		gSelectedPointer.render(gRenderer, &SelectedCharDest);
+		SaveLabelTexture.render(gRenderer, &SaveLabelDest);
 		CancelLabelTexture.render(gRenderer, &CancelLabelDest);
 		SDL_RenderPresent(gRenderer);
+		if (bad_choise) {
+			SDL_Delay(300);
+		}
+	}
+	if (!gUserData.UpToDate) {
+		DataStorage::updateUserData(gUserData);
 	}
 }
 
@@ -1155,9 +1329,19 @@ void close()
 	//Free loaded images
 	gMenuBG.free();
 	gMenuPointer.free();
+	gMainMenuBg.free();
+	gResMenuBgOk.free();
+	gResMenuBgFail.free();
+	gCoinTexture.free();
+	gSelectorTexture.free();
+
 	//Free the music 
 	Mix_FreeMusic( gMainMusic ); 
-	gMainMusic = NULL;	
+	gMainMusic = NULL;
+	//Free chunk sample
+	Mix_FreeChunk(gSFXSample);
+	gSFXSample = NULL;
+
 	//Destroy window	
 	SDL_DestroyRenderer(gRenderer);
 	SDL_DestroyWindow(gWindow);

@@ -43,7 +43,7 @@ class Level
 public:
 	Level(SDL_Renderer* gR, int w, int h);
 	~Level();
-	bool Load(int lvlNum, Character userPotato);
+	bool Load(sLevelData lvlData, Character userPotato);
 	void Draw();
 	void DrawBack();
 	void UpdateCamera();

@@ -64,13 +64,11 @@ void Level::handleDotEvent(SDL_Event & e)
 	potato->handleEvent(e);
 }
 
-bool Level::Load(int lvlNum, Character userPotato)
+bool Level::Load(sLevelData lvlData, Character userPotato)
 {
-	lvlId = lvlNum;
-	std::ostringstream ss("");
-	ss << "level_" << lvlNum;
+	std::stringstream ss("");
+	ss << "level_" << lvlData.id;
 	std::string levelName = ss.str();
-	ss.str("");
 	std::string PotatoPath = userPotato.path;
 
 	bool levelLoaded = true;
@@ -209,7 +207,7 @@ bool Level::Load(int lvlNum, Character userPotato)
 	}
 	map.close();
 	if (levelLoaded) {
-		lLevelData = DataStorage::getLevelData(lvlId);
+		lLevelData = lvlData;
 
 		//count background scaling - for bg images smaller then screen
 		double kw = (double)lTextures[BlockBox::BL_EMPTY]->getWidth() / Width;
@@ -237,12 +235,12 @@ void Level::Draw()
 	
 	//Render score	
 	int gotCoins = potato->getCoinCountInt();
-	//if(gotCoins == CoinsCount)
-	if (gotCoins >= 7 && BlockBox::DOOR_OPEN == 0) {//temporary for tests
+	/*
+	if (gotCoins >= lLevelData.reqCoins && BlockBox::DOOR_OPEN == 0) {
 		BlockBox::DOOR_OPEN = 1;
 		Mix_PlayChannel(-1, lSounds[Sounds::SE_DOOR], 0);
 	}
-
+	*/
 	std::ostringstream CoinsStr("");
 	CoinsStr << lLevelData.reqCoins;
 
@@ -297,11 +295,11 @@ void Level::DrawBack()
 	new_camera.w *= bg_scale;
 	new_camera.h *= bg_scale;
 
-
+	/*
 	int cam_w = lTextures[BlockBox::BL_EMPTY]->getWidth() / 2;
 	if (lCamera.x > cam_w) {
 		//new_camera.x = lCamera.x % cam_w;
-	}
+	}*/
 	SDL_Rect dest = { 0, 0, lCamera.w, lCamera.h };
 	lTextures[BlockBox::BL_EMPTY]->render(gRenderer, &dest, &new_camera);
 }
@@ -315,8 +313,6 @@ void Level::UpdateCamera()
 		lCamera.x = potato->getPosX() - lCamera.w + shift;
 	int br = potato->getPosY();
 	lCamera.y = (potato->getPosY() + Dot::DOT_HEIGHT) - lCamera.h / 2;
-	//camera.x = 0;
-	//camera.y = 600;
 	//Keep the camera in bounds
 	if (lCamera.x < 0)
 	{
@@ -345,8 +341,7 @@ void Level::UpdateDot() {
 void Level::UpdateDoor()
 {
 	int gotCoins = potato->getCoinCountInt();
-	//if(gotCoins == CoinsCount)
-	if (gotCoins >= lLevelData.reqCoins && BlockBox::DOOR_OPEN == 0) {//temporary for tests
+	if (gotCoins >= lLevelData.reqCoins && BlockBox::DOOR_OPEN == 0) {
 		BlockBox::DOOR_OPEN = 1;
 		Mix_PlayChannel(-1, lSounds[Sounds::SE_DOOR], 0);
 	}

@@ -4,6 +4,6 @@ d:\projects\github\potatogame\potatogame\blockbox.h(24): warning C4091: 'static 
 d:\projects\github\potatogame\potatogame\blockbox.h(33): warning C4091: 'static ': ignored on left of 'BlockBox::Collection' when no variable is declared
 d:\projects\github\potatogame\potatogame\dot.h(54): warning C4091: 'static ': ignored on left of 'Dot::States' when no variable is declared
 d:\projects\github\potatogame\potatogame\level.h(62): warning C4091: 'static ': ignored on left of 'Level::Result' when no variable is declared
-d:\projects\github\potatogame\potatogame\main.cpp(678): warning C4244: 'argument': conversion from 'time_t' to 'unsigned int', possible loss of data
+d:\projects\github\potatogame\potatogame\main.cpp(706): warning C4244: 'argument': conversion from 'time_t' to 'unsigned int', possible loss of data
   PotatoGame.vcxproj -> D:\Projects\GitHUB\PotatoGame\Debug\PotatoGame.exe
   PotatoGame.vcxproj -> D:\Projects\GitHUB\PotatoGame\Debug\PotatoGame.pdb (Partial PDB)

@@ -1,5 +1,12 @@
 <Characters>
+	<Shop Id = "15" Path = "Resources/Dots/mister.png" Price="4"/>
 	<Character Id = "1" Path = "Resources/Dots/dot_1.png"/>
-	<Character Id = "2" Path = "Resources/Dots/dot_2.png"/>
+	<Character Id = "2" Path = "Resources/Dots/dot_2.png"/>	
 	<Character Id = "0" Path = "Resources/Dots/dot_3.png"/>
+	<ShopCharacter Id = "10" Path = "Resources/Dots/bag.png" Price="3"/>
+	<ShopCharacter Id = "11" Path = "Resources/Dots/pirate.png" Price="3"/>
+	<ShopCharacter Id = "12" Path = "Resources/Dots/hat.png" Price="5"/>
+	<ShopCharacter Id = "13" Path = "Resources/Dots/gunslinger.png" Price="6"/>
+	<ShopCharacter Id = "14" Path = "Resources/Dots/miss.png" Price="4"/>
+	<ShopCharacter Id = "15" Path = "Resources/Dots/mister.png" Price="4"/>
 </Characters>

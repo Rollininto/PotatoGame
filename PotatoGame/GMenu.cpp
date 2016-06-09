@@ -113,8 +113,6 @@ void GMenu::LoadTextures()
 	for (int i = 0; i < Infos.size(); i++) {
 		Infos[i].setFont(tF);
 		Infos[i].createTexture(gRenderer);
-		//SDL_Surface* InfoSurf = TTF_RenderText_Blended_Wrapped(tF, infoMessage.c_str(), TextColor, 100);
-			//InfoTexture = new LTexture(gRenderer, InfoSurf);
 		InfoRects.push_back(SDL_Rect());
 		InfoRects[i] = { renderWindow.w - Infos[i].Texture()->getWidth() - 2*pad,
 			2 * pad + step,
@@ -206,7 +204,6 @@ void GMenu::Show()
 		PointRect.y = ItemRects[currOption].y;
 		PointTexture->render(gRenderer, &PointRect);
 		if (!Infos.empty()) {
-			SDL_RenderDrawRect(gRenderer,&InfoContainerRect);
 			for (int i = 0; i < Infos.size();i++)
 				Infos[i].Texture()->render(gRenderer, &InfoRects[i]);
 		}
